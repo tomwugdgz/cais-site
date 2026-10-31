@@ -1,0 +1,1785 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AI 搜索适配诊断 · GEO Audit</title>
+<style>
+:root{
+  --bg:#0a0d13; --panel:#111621; --panel2:#161d2a; --line:#222b3a; --line2:#2e3949;
+  --txt:#e2e8f2; --dim:#8994a7; --dim2:#5f6b7e;
+  --acc:#4da3ff; --acc2:#7cc0ff; --ok:#2fbf87; --warn:#f2b13c; --high:#ff8a5c; --crit:#f4596f;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--bg);color:var(--txt);font:14px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;-webkit-font-smoothing:antialiased}
+a{color:var(--acc2);text-decoration:none}
+h1,h2,h3,h4{margin:0;font-weight:650;letter-spacing:-.01em}
+code,pre,.mono{font-family:var(--mono)}
+.wrap{max-width:1180px;margin:0 auto;padding:0 24px}
+
+/* ---------- hero ---------- */
+.hero{border-bottom:1px solid var(--line);background:linear-gradient(180deg,#0d1219,#0a0d13)}
+.hero .wrap{padding-top:40px;padding-bottom:32px}
+.eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);border:1px solid var(--line2);border-radius:999px;padding:5px 12px;margin-bottom:18px}
+.eyebrow i{width:6px;height:6px;border-radius:50%;background:var(--ok);display:block}
+h1.big{font-size:34px;line-height:1.25;margin-bottom:12px}
+h1.big em{font-style:normal;color:var(--acc2)}
+.lede{color:var(--dim);max-width:760px;font-size:14.5px}
+.lede strong{color:var(--txt);font-weight:600}
+
+/* ---------- panel / card ---------- */
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px}
+.pad{padding:20px}
+.sec{margin-top:28px}
+.sec-t{display:flex;align-items:baseline;gap:12px;margin-bottom:14px}
+.sec-t h2{font-size:17px}
+.sec-t span{font-size:12.5px;color:var(--dim2)}
+
+/* ---------- input ---------- */
+.modes{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}
+.mode{background:var(--panel2);border:1px solid var(--line);color:var(--dim);border-radius:8px;padding:7px 13px;font-size:13px;cursor:pointer;transition:.15s;font-family:inherit}
+.mode:hover{color:var(--txt);border-color:var(--line2)}
+.mode.on{background:#15304d;border-color:var(--acc);color:#cfe6ff}
+.pane{display:none}
+.pane.on{display:block}
+.field{display:flex;gap:10px;flex-wrap:wrap;align-items:stretch}
+input[type=text],input[type=url],textarea,select{background:var(--panel2);border:1px solid var(--line);color:var(--txt);border-radius:8px;padding:10px 12px;font-size:14px;font-family:inherit;outline:none;width:100%}
+input[type=text]:focus,textarea:focus,select:focus{border-color:var(--acc)}
+textarea{font-family:var(--mono);font-size:12.5px;line-height:1.55;resize:vertical;min-height:150px}
+select{width:auto;cursor:pointer}
+.url-in{flex:1;min-width:280px}
+button{font-family:inherit;cursor:pointer;border-radius:8px;border:1px solid transparent;font-size:14px;padding:10px 18px;transition:.15s}
+button:disabled{opacity:.45;cursor:not-allowed}
+.btn-p{background:var(--acc);color:#04121f;font-weight:650;border-color:var(--acc)}
+.btn-p:hover:not(:disabled){background:#63b0ff}
+.btn-s{background:var(--panel2);border-color:var(--line2);color:var(--txt)}
+.btn-s:hover:not(:disabled){border-color:var(--acc);color:var(--acc2)}
+.btn-sm{padding:6px 12px;font-size:12.5px}
+.hint{font-size:12.5px;color:var(--dim2);margin-top:10px;line-height:1.7}
+.drop{border:1.5px dashed var(--line2);border-radius:10px;padding:26px;text-align:center;color:var(--dim);cursor:pointer;transition:.15s;background:#0e131c}
+.drop:hover,.drop.over{border-color:var(--acc);color:var(--acc2);background:#101828}
+.drop b{display:block;color:var(--txt);font-weight:600;margin-bottom:4px;font-size:14px}
+.adv{margin-top:14px;border-top:1px solid var(--line);padding-top:14px}
+.adv summary{font-size:13px;color:var(--dim);cursor:pointer;user-select:none}
+.adv summary:hover{color:var(--acc2)}
+.demo-row{display:flex;gap:8px;flex-wrap:wrap}
+.demo-btn{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:10px 14px;color:var(--dim);font-size:13px;text-align:left}
+.demo-btn:hover{border-color:var(--acc);color:var(--txt)}
+.demo-btn b{display:block;color:var(--txt);font-size:13.5px;font-weight:600}
+.demo-btn span{font-size:11.5px;color:var(--dim2)}
+
+/* ---------- flow ---------- */
+.flow{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-top:26px}
+.fs{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:13px 12px;position:relative}
+.fs .n{font:600 11px var(--mono);color:var(--dim2);letter-spacing:.1em}
+.fs .t{font-size:13px;font-weight:600;margin:5px 0 5px;line-height:1.35}
+.fs .d{font-size:11.5px;color:var(--dim2);line-height:1.5}
+@media(max-width:1100px){.flow{grid-template-columns:1fr 1fr 1fr}}
+@media(max-width:900px){.flow{grid-template-columns:1fr 1fr}}
+
+/* ---------- log ---------- */
+.log{font-family:var(--mono);font-size:12px;line-height:1.85;color:var(--dim);max-height:230px;overflow:auto;background:#080b11;border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-top:16px}
+.log div{display:flex;gap:10px}
+.log .ts{color:var(--dim2);flex:0 0 62px}
+.log .ok{color:var(--ok)} .log .err{color:var(--crit)} .log .wn{color:var(--warn)} .log .hl{color:var(--acc2)}
+
+/* ---------- score ---------- */
+.summary{display:grid;grid-template-columns:210px 1fr;gap:22px;align-items:center}
+@media(max-width:820px){.summary{grid-template-columns:1fr}}
+.gauge{text-align:center}
+.gauge .v{font:700 52px/1 var(--mono);letter-spacing:-.03em}
+.gauge .l{font-size:12px;color:var(--dim2);margin-top:8px;letter-spacing:.08em}
+.gauge .badge{display:inline-block;margin-top:10px;font-size:12px;padding:4px 12px;border-radius:999px;border:1px solid}
+.bars{display:flex;flex-direction:column;gap:11px}
+.bar-row{display:grid;grid-template-columns:150px 1fr 52px;gap:12px;align-items:center;font-size:13px}
+.bar-row .nm{color:var(--dim)}
+.bar-tr{height:7px;background:#1b2331;border-radius:99px;overflow:hidden}
+.bar-fi{height:100%;border-radius:99px;transition:width .6s cubic-bezier(.2,.8,.3,1)}
+.bar-row .sc{font:600 13px var(--mono);text-align:right}
+
+/* ---------- issue table ---------- */
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;font-weight:600;color:var(--dim);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;padding:9px 12px;border-bottom:1px solid var(--line2);white-space:nowrap}
+td{padding:11px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+tbody tr:hover{background:#131a26}
+.sev{display:inline-block;font:600 11px var(--mono);padding:3px 8px;border-radius:5px;letter-spacing:.04em;white-space:nowrap}
+.sev.crit{background:#3a1420;color:#ff8fa3} .sev.high{background:#3a2413;color:#ffab84}
+.sev.medium{background:#332a12;color:#f4c86a} .sev.low{background:#152b23;color:#6fd6a9}
+.sev.pass{background:#132b22;color:#4fd39b}
+td.ev{font-family:var(--mono);font-size:11.5px;color:var(--dim);word-break:break-all;max-width:290px}
+.tbl-wrap{border:1px solid var(--line);border-radius:10px;overflow:hidden;overflow-x:auto}
+
+/* ---------- steps ---------- */
+.step{border:1px solid var(--line);border-radius:12px;background:var(--panel);margin-bottom:14px;overflow:hidden}
+.step-h{display:flex;align-items:center;gap:14px;padding:15px 18px;cursor:pointer;user-select:none}
+.step-h:hover{background:var(--panel2)}
+.step-h .idx{font:700 12px var(--mono);color:var(--dim2);border:1px solid var(--line2);border-radius:6px;padding:3px 8px;flex:0 0 auto}
+.step-h .ttl{font-size:14.5px;font-weight:650;flex:1}
+.step-h .sc{font:600 14px var(--mono)}
+.step-h .cv{color:var(--dim2);font-size:12px;transition:.2s}
+.step.open .step-h .cv{transform:rotate(90deg)}
+.step-b{display:none;padding:0 18px 18px;border-top:1px solid var(--line)}
+.step.open .step-b{display:block}
+.sub{margin-top:16px}
+.sub h4{font-size:12px;color:var(--dim);letter-spacing:.08em;text-transform:uppercase;margin-bottom:9px}
+.finding{border-left:2px solid var(--line2);padding:2px 0 2px 14px;margin-bottom:12px}
+.finding .ft{font-size:13.5px;font-weight:600;margin-bottom:4px}
+.finding .fb{font-size:13px;color:var(--dim);line-height:1.65}
+.finding .fb b{color:var(--txt);font-weight:600}
+.finding.crit{border-left-color:var(--crit)} .finding.high{border-left-color:var(--high)}
+.finding.medium{border-left-color:var(--warn)} .finding.low{border-left-color:var(--ok)}
+
+/* ---------- code ---------- */
+.pre{position:relative;background:#080b11;border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-top:8px}
+.pre .ph{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:#0d121b;border-bottom:1px solid var(--line);font:600 11.5px var(--mono);color:var(--dim)}
+.pre pre{margin:0;padding:14px 16px;overflow:auto;max-height:420px;font-size:12px;line-height:1.65;color:#c8d3e4}
+.pre .pa{display:flex;gap:6px}
+pre code{font-family:var(--mono)}
+.prompt-box{background:#0d121b;border:1px solid var(--line);border-radius:10px;padding:14px 16px;font-size:13px;line-height:1.75;color:#c8d3e4;white-space:pre-wrap;max-height:320px;overflow:auto;margin-top:8px}
+.tabs{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
+.tag{font:600 11px var(--mono);color:var(--dim2);border:1px solid var(--line2);border-radius:5px;padding:2px 7px}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:6px 16px;font-size:13px}
+.kv dt{color:var(--dim2);font-family:var(--mono);font-size:11.5px;padding-top:2px}
+.kv dd{margin:0}
+.muted{color:var(--dim2);font-size:12.5px}
+.pill{display:inline-block;font:600 11.5px var(--mono);padding:3px 9px;border-radius:6px;background:#16202e;color:var(--dim);margin:0 5px 5px 0;border:1px solid var(--line)}
+.pill.hit{background:#132b22;color:#4fd39b;border-color:#1d4a37}
+.pill.miss{background:#33141c;color:#ff8fa3;border-color:#4a1f2a}
+.hidden{display:none!important}
+footer{border-top:1px solid var(--line);margin-top:50px;padding:24px 0;color:var(--dim2);font-size:12px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.mt16{margin-top:16px}.mt10{margin-top:10px}
+</style>
+</head>
+<body>
+
+<div class="hero">
+<div class="wrap">
+  <div class="eyebrow"><i></i>GEO / AEO 五步诊断</div>
+  <h1 class="big">你的网站，<em>AI 搜得到吗？</em></h1>
+  <p class="lede">AI 爬虫先读 HTML，再读内容。Schema 没渲染、JSON-LD 报错、实体没铺满，内容写得再好也抽不走。本工具按<strong>五步</strong>扫描全站代码层，输出问题清单、修复代码和可直接粘进 Codex 的提示词。另附 <strong>MTO 机器信任诊断</strong>：探测 MCP 端点、A2A Agent Card 与接口文档，判断 Agent 能否与你的后台通信——这部分只给诊断与建议，不给修复代码。</p>
+
+  <div class="flow">
+    <div class="fs"><div class="n">STEP 01</div><div class="t">扫代码层漏洞</div><div class="d">JSON-LD 语法、Product 字段、未渲染 metafield、robots 屏蔽</div></div>
+    <div class="fs"><div class="n">STEP 02</div><div class="t">批量补 Schema</div><div class="d">七层 Schema 覆盖度与 Liquid 模板方案</div></div>
+    <div class="fs"><div class="n">STEP 03</div><div class="t">改内容结构</div><div class="d">标题层级、答案块密度、可抽取性评分</div></div>
+    <div class="fs"><div class="n">STEP 04</div><div class="t">铺实体与问答页</div><div class="d">实体覆盖、独立问答页缺口、RAG 检索节点</div></div>
+    <div class="fs"><div class="n">STEP 05</div><div class="t">信源对齐</div><div class="d">规格口径、认证编号、跨平台一致性核对</div></div>
+    <div class="fs" style="border-color:#2b3a55"><div class="n">MTO</div><div class="t">机器信任诊断</div><div class="d">MCP 端点、A2A Agent Card、接口文档、证据链。只诊断，不给修复</div></div>
+  </div>
+</div>
+</div>
+
+<div class="wrap">
+
+<section class="sec">
+  <div class="card pad">
+    <div class="modes" id="modes">
+      <button class="mode on" data-p="fetch">输入网址抓取</button>
+      <button class="mode" data-p="upload">上传网页文件</button>
+      <button class="mode" data-p="paste">粘贴源码</button>
+      <button class="mode" data-p="demo">示例站点</button>
+    </div>
+
+    <!-- 上传 -->
+    <div class="pane" id="p-upload">
+      <div class="drop" id="drop">
+        <b>拖入或点击选择 .html 文件</b>
+        支持多选。用 HTTrack / wget / Screaming Frog 导出整站后一次上传，即可诊断整个网站。
+      </div>
+      <input type="file" id="file" multiple accept=".html,.htm,.txt" class="hidden">
+      <div id="filelist" class="mt10"></div>
+      <div class="hint">文件名会被当作 URL。建议按路径命名，例如 <code>products_industrial-pump.html</code>。robots.txt 可一并上传（命名为 <code>robots.txt</code>）。</div>
+    </div>
+
+    <!-- 粘贴 -->
+    <div class="pane" id="p-paste">
+      <div class="row"><input type="text" class="url-in" id="paste-url" placeholder="页面 URL，例如 https://example.com/products/pump-x1"><select id="paste-more"><option value="0">仅此一页</option><option value="1">后面还有页面，继续添加</option></select></div>
+      <textarea id="paste-src" class="mt10" placeholder="打开目标页面 → 右键 → 查看网页源代码 → 全选复制 → 粘贴到这里"></textarea>
+      <div class="row mt10"><button class="btn-s btn-sm" id="paste-add">添加这一页</button><span class="muted" id="paste-count"></span></div>
+      <div class="row mt10"><input type="text" class="url-in" id="robots-in" placeholder="（可选）粘贴 robots.txt 内容，用于检测 AI 爬虫屏蔽"></div>
+    </div>
+
+    <!-- 抓取 -->
+    <div class="pane on" id="p-fetch">
+      <div class="field">
+        <input type="text" class="url-in" id="url" placeholder="https://example.com">
+        <select id="depth"><option value="1">仅首页</option><option value="6" selected>快速 · 6 页</option><option value="12">标准 · 12 页</option><option value="20">深度 · 20 页</option></select>
+        <button class="btn-p" id="go">开始诊断</button>
+      </div>
+      <div class="mt10" id="proxy-state" style="font-size:12.5px"></div>
+      <div class="hint">页面已内置同源抓取通道 <code>/api/fetch</code>。部署到 Cloudflare Pages 后开箱即用，客户无需配置。若你直接用 file:// 本地打开，该通道不可用，请改用「上传网页文件」。</div>
+      <div class="adv">
+        <details>
+          <summary>高级：改用独立代理地址 / 查看代理源码</summary>
+          <div class="row mt10">
+            <input type="text" class="url-in" id="proxy" placeholder="留空即用同源通道。如需独立部署，填 https://your-worker.xxx.workers.dev/?url=">
+            <button class="btn-s btn-sm" id="copy-worker">复制 Worker 代码</button>
+          </div>
+          <div class="hint">独立代理需返回目标页 HTML 并带 <code>access-control-allow-origin: *</code>。留空时依次尝试：同源通道 → 公共代理 → 提示改用上传模式。</div>
+          <div class="pre mt10"><div class="ph"><span>cloudflare-worker.js</span><span class="pa"><button class="btn-s btn-sm" id="copy-w2">复制</button></span></div><pre><code id="worker-code"></code></pre></div>
+        </details>
+      </div>
+    </div>
+
+    <!-- demo -->
+    <div class="pane" id="p-demo">
+      <div class="demo-row">
+        <button class="demo-btn" data-d="pump"><b>工业泵站</b><span>gtin 大面积空缺 · FAQ JSON-LD 语法错误</span></button>
+        <button class="demo-btn" data-d="storage"><b>储能站</b><span>认证编号后台有值 · 前端未输出</span></button>
+        <button class="demo-btn" data-d="lock"><b>智能门锁站</b><span>续航口径不一致 · 无独立问答页</span></button>
+      </div>
+      <div class="hint">示例数据。用于演示诊断逻辑与报告形态，不代表任何真实站点。</div>
+    </div>
+
+    <div class="row mt16" id="runbar">
+      <button class="btn-p" id="run">生成诊断报告</button>
+      <button class="btn-s btn-sm hidden" id="reset">清空重来</button>
+      <span class="muted" id="ready"></span>
+    </div>
+  </div>
+
+  <div class="log hidden" id="log"></div>
+</section>
+
+<section class="sec hidden" id="report"></section>
+
+<footer>
+  <div class="wrap" style="padding:0">诊断基于页面源码静态解析。第五步的跨平台引用验证需人工或外部数据确认，工具只输出核对清单，不生成未经核实的结论。</div>
+</footer>
+</div>
+
+<script>
+"use strict";
+const $=(s,r=document)=>r.querySelector(s);
+const $$=(s,r=document)=>Array.prototype.slice.call(r.querySelectorAll(s));
+const esc=t=>String(t==null?"":t).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const now=()=>new Date().toTimeString().slice(0,8);
+
+/* ============ 常量 ============ */
+const AI_BOTS=[
+ {id:"GPTBot",eng:"ChatGPT"},
+ {id:"OAI-SearchBot",eng:"ChatGPT Search"},
+ {id:"ChatGPT-User",eng:"ChatGPT 浏览"},
+ {id:"PerplexityBot",eng:"Perplexity"},
+ {id:"ClaudeBot",eng:"Claude"},
+ {id:"Claude-User",eng:"Claude 浏览"},
+ {id:"Google-Extended",eng:"Google AI Overviews / Gemini"},
+ {id:"Applebot-Extended",eng:"Apple Intelligence"},
+ {id:"CCBot",eng:"Common Crawl 语料"},
+ {id:"Bytespider",eng:"豆包"},
+ {id:"Amazonbot",eng:"Alexa / Rufus"},
+ {id:"Bingbot",eng:"Copilot"}
+];
+const GTIN_KEYS=["gtin13","gtin14","gtin12","gtin8","gtin"];
+const PRODUCT_REQ=["name","image","description","sku","brand","offers"];
+const PRODUCT_REC=["mpn","aggregateRating","review","material","color","size","category","additionalProperty","shippingDetails","hasMerchantReturnPolicy","weight","manufacturer"];
+const OFFER_KEYS=["price","priceCurrency","availability","url","itemCondition","priceValidUntil","seller"];
+const SEVEN_LAYER=[
+ {t:"Organization",w:3,d:"品牌实体。AI 判断你是谁。"},
+ {t:"WebSite",w:2,d:"站点实体与站内搜索。"},
+ {t:"BreadcrumbList",w:2,d:"层级归属。"},
+ {t:"Product",w:5,d:"产品主体。购物类引用入口。"},
+ {t:"Offer",w:3,d:"价格与库存。ChatGPT 购物助手直接读取。"},
+ {t:"FAQPage",w:4,d:"问答块。AI Overviews 抽取首选。"},
+ {t:"Review/AggregateRating",w:3,d:"评分与评价。"}
+];
+const LAYER_ID={"Organization":"layer-org","WebSite":"layer-web","BreadcrumbList":"layer-bc","Product":"layer-product","Offer":"layer-offer","FAQPage":"layer-faq","Review/AggregateRating":"layer-review"};
+const SEV_ORDER={critical:0,high:1,medium:2,low:3,pass:4};
+const SEV_LABEL={critical:"致命",high:"严重",medium:"中等",low:"轻微",pass:"通过"};
+const CERT_RE=/\b(ATEX\s*(Zone\s*[0-9A-Za-z\/\-]+)?|CE\d{4}|UL\s*[0-9A-Z]+|IECEx|ISO\s?\d{3,5}(-\d+)?|IP[0-9]{2}K?|FCC|RoHS|REACH|CCC|TUV|GS|ETL|SAA|KC|PSE|BIS)\b/gi;
+const SPEC_RE=/(\d[\d,\.]*)\s?(个月|月|年|小时|h|小时|cycles?|次|次循环|kW|kWh|Wh|W|V|Ah|mAh|A|MPa|bar|L\/min|m³\/h|rpm|kg|mm|℃|°C|N·m)/g;
+const STOP=new Set(("的 了 和 是 在 我 有 就 不 人 都 一 一个 上 也 很 到 说 要 去 你 会 着 没有 看 好 自己 这 那 我们 他们 可以 这个 那个 以及 对于 关于 通过 使用 提供 产品 公司 页面 内容 网站 更多 详情 请 您 及 与 或 等 中 为 以 将 并 但 而 其 之 于 由 被 从 对 把 用 使 能够 需要 进行 实现 采用 具有 主要 我们 我们 产品 系列 各种 不同 多个 以上 以下 相关 其他 the a an and or of to in for on with is are be as at by from that this it we you your our can will may have has not but if then than so such which what when where how all any each more most other some into over under about after before between during including within across per via using used use uses also however therefore thus these those there here their its his her them they them one two three").split(/\s+/));
+
+/* ============ 日志 ============ */
+let LOG=[];
+function log(msg,cls){LOG.push({t:now(),m:msg,c:cls||""});const el=$("#log");if(!el)return;el.classList.remove("hidden");
+ el.innerHTML=LOG.map(l=>'<div><span class="ts">'+l.t+'</span><span class="'+l.c+'">'+esc(l.m)+"</span></div>").join("");el.scrollTop=1e6;}
+
+/* ============ 抓取 ============ */
+const PROXIES=[
+ {n:"同源代理",f:(u,p)=>{
+   if(p)return p+encodeURIComponent(u);
+   if(location.protocol==="file:"||location.protocol==="blob:")return null;
+   return "/api/fetch?url="+encodeURIComponent(u);
+ }},
+ {n:"allorigins",f:u=>"https://api.allorigins.win/raw?url="+encodeURIComponent(u)},
+ {n:"codetabs",f:u=>"https://api.codetabs.com/v1/proxy?quest="+encodeURIComponent(u)},
+ {n:"corsproxy.io",f:u=>"https://corsproxy.io/?url="+encodeURIComponent(u)},
+ {n:"r.jina.ai",f:u=>"https://r.jina.ai/"+u},
+ {n:"thingproxy",f:u=>"https://thingproxy.freeboard.io/fetch/"+u},
+ {n:"cors.workers.dev",f:u=>"https://test.cors.workers.dev/?"+u}
+];
+async function fetchText(url,proxy){
+  let last="";
+  for(const p of PROXIES){
+    const target=p.f(url,proxy); if(!target)continue;
+    try{
+      const c=new AbortController(); const to=setTimeout(()=>c.abort(),15000);
+      const r=await fetch(target,{signal:c.signal,headers:{"Accept":"text/html,text/plain,*/*"}});
+      clearTimeout(to);
+      if(!r.ok){last=p.n+" HTTP "+r.status;continue;}
+      const t=await r.text();
+      if(/^\s*\{"error"/.test(t)){
+        try{last=p.n+"："+(JSON.parse(t).error||"未知错误");}catch(e){last=p.n+" 返回错误";}
+        continue;
+      }
+      if(t&&t.length>60)return {ok:true,txt:t,via:p.n};
+      last=p.n+" 返回空";
+    }catch(e){last=p.n+" "+(e.name==="AbortError"?"超时":"不可达");}
+  }
+  return {ok:false,err:last||"无可用通道"};
+}
+/* ============ MTO · 机器信任优化 ============ */
+// 参考 MTO 四层技术构成：L1 证据链 / L2 机器可读 / L3 信任量化 / L4 协议与执行
+// 约定端点探测表。status 200 视为存在，401/403 视为存在但需授权。
+const MTO_PROBES=[
+ {p:"/.well-known/agent.json",k:"a2a-card",L:4,n:"A2A Agent Card",d:"Google A2A 规范约定的 Agent Card 发布路径"},
+ {p:"/.well-known/agent-card.json",k:"a2a-card2",L:4,n:"A2A Agent Card（变体路径）",d:"部分实现的变体命名"},
+ {p:"/.well-known/mcp.json",k:"mcp-wk",L:4,n:"MCP 服务清单",d:"MCP 服务声明约定路径"},
+ {p:"/mcp",k:"mcp-root",L:4,n:"MCP 端点（根路径）",d:"MCP HTTP / Streamable 传输常见路径"},
+ {p:"/mcp/sse",k:"mcp-sse",L:4,n:"MCP SSE 端点",d:"MCP SSE 传输路径"},
+ {p:"/sse",k:"sse",L:4,n:"SSE 端点",d:"MCP SSE 变体路径"},
+ {p:"/api/mcp",k:"mcp-api",L:4,n:"MCP 端点（API 前缀）",d:""},
+ {p:"/openapi.json",k:"openapi",L:4,n:"OpenAPI 文档",d:"REST + OpenAPI，Agent 自动适配的基础"},
+ {p:"/api/openapi.json",k:"openapi2",L:4,n:"OpenAPI 文档（API 前缀）",d:""},
+ {p:"/swagger.json",k:"swagger",L:4,n:"Swagger 文档",d:""},
+ {p:"/v3/api-docs",k:"apidocs",L:4,n:"Swagger v3 文档",d:"Java 系常见路径"},
+ {p:"/llms-full.txt",k:"llms-full",L:2,n:"llms-full.txt",d:"面向 LLM 的完整知识文件"},
+ {p:"/ai.txt",k:"ai-txt",L:2,n:"ai.txt",d:"AI 可读入口（早期约定）"},
+ {p:"/.well-known/ai.txt",k:"ai-txt2",L:2,n:".well-known/ai.txt",d:""},
+ {p:"/.well-known/ai-plugin.json",k:"ai-plugin",L:4,n:"AI 插件清单",d:"ChatGPT 插件 manifest 约定"},
+ {p:"/.well-known/security.txt",k:"sec-txt",L:3,n:"security.txt",d:"安全联系约定，留痕与可追责参考"}
+];
+// Agent Card 必备字段（A2A 规范）
+const AGENTCARD_KEYS=["name","description","url","version","capabilities","skills","authentication","defaultInputModes","defaultOutputModes"];
+
+const MTO_RE={
+  mcp:/modelcontextprotocol|mcp[-_. ]?server|mcpServers|\bmcp\b|jsonrpc[\s"']*[:=][\s"']*2\.0/i,
+  a2a:/agent[\s_-]?card|agent2agent|\ba2a\b/i,
+  api:/openapi|swagger|api[-_]?docs|function[\s_-]?calling|\/api\/v\d/i,
+  validity:/有效期|有效至|valid\s?until|validThrough|expir|到期|失效日期|签发日期|签发机构|发证|证书编号/i,
+  std:/\b(GB\/?T?\s?\d{4,5}|ISO\s?\d{3,5}|IEC\s?\d{4,6}|EN\s?\d{3,5}|ASTM\s?[A-Z]?\s?\d{2,5}|JIS\s?[A-Z]?\s?\d{3,5}|UL\s?\d{3,5}|DIN\s?\d{3,5})\b/i,
+  fresh:/dateModified|lastUpdated|lastmod|更新于|最后更新|更新时间|数据截止/,
+  trust:/trust[\s_-]?score|信任分|信任评分|confidence[\s_-]?score|evidence[\s_-]?score|可信度评分/i,
+  audit:/audit|审计|留痕|可追溯|traceability|provenance/i,
+  certBody:/tuv|sgs|intertek|ul\.com|vde|bsi-|nemko|dekra|ccic|cqc|cnas|ilac/i
+};
+
+// 端点探测。只走首选通道（同源代理或用户指定代理），不遍历公共代理。
+async function probeEndpoint(url,proxy){
+  const p=PROXIES[0];
+  const target=p.f(url,proxy);
+  if(!target)return {status:0,note:"无可用通道"};
+  try{
+    const c=new AbortController(); const to=setTimeout(()=>c.abort(),8000);
+    const r=await fetch(target,{signal:c.signal,headers:{Accept:"*/*"}});
+    clearTimeout(to);
+    if(r.ok){
+      const t=await r.text();
+      if(/^\s*\{"error"/.test(t)){
+        try{const e=JSON.parse(t);const m=String(e.error||"").match(/upstream returned (\d{3})/);
+          if(m)return {status:+m[1]};}catch(x){}
+        return {status:0,note:"代理返回错误"};
+      }
+      return {status:200,txt:t.slice(0,200000)};
+    }
+    try{
+      const t=await r.text();
+      const m=t.match(/upstream returned (\d{3})/)||t.match(/HTTP (\d{3})/);
+      if(m)return {status:+m[1]};
+    }catch(x){}
+    return {status:r.status,note:"HTTP "+r.status};
+  }catch(e){
+    return {status:0,note:e.name==="AbortError"?"超时":"不可达"};
+  }
+}
+async function probeMTO(base,proxy){
+  const out=[];
+  const root=base.replace(/\/+$/,"");
+  const queue=MTO_PROBES.slice();
+  const workers=[];
+  for(let i=0;i<4;i++){
+    workers.push((async()=>{
+      while(queue.length){
+        const item=queue.shift(); if(!item)break;
+        const r=await probeEndpoint(root+item.p,proxy);
+        out.push(Object.assign({},item,r));
+      }
+    })());
+  }
+  await Promise.all(workers);
+  return out;
+}
+
+function sameOriginLinks(html,base,limit){
+  const doc=new DOMParser().parseFromString(html,"text/html");
+  let host=""; try{host=new URL(base).hostname.replace(/^www\./,"");}catch(e){return [];}
+  const seen=new Set(),out=[];
+  $$("a[href]",doc).forEach(a=>{
+    const h=a.getAttribute("href")||"";
+    if(/^(#|mailto:|tel:|javascript:)/i.test(h))return;
+    let u; try{u=new URL(h,base);}catch(e){return;}
+    if(!/^https?:$/.test(u.protocol))return;
+    if(u.hostname.replace(/^www\./,"")!==host)return;
+    if(/\.(pdf|jpg|jpeg|png|gif|webp|svg|zip|rar|mp4|css|js|xml|ico|woff2?)$/i.test(u.pathname))return;
+    u.hash=""; const k=u.href;
+    if(seen.has(k))return; seen.add(k); out.push(u.href);
+  });
+  return out.slice(0,limit*4);
+}
+
+/* ============ 解析 ============ */
+function cleanJsonLd(raw){
+  return raw.replace(/^\uFEFF/,"").replace(/^\s*<!--[\s\S]*?-->\s*/g,"").trim();
+}
+function extractJsonLd(doc){
+  const out=[];
+  $$('script[type="application/ld+json"],script[type="application/ld+json;charset=UTF-8"],script[type="application/json+ld"]',doc).forEach((el,i)=>{
+    const raw=(el.textContent||"").trim();
+    if(!raw){out.push({i:i,ok:false,error:"脚本块为空",raw:""});return;}
+    try{const d=JSON.parse(cleanJsonLd(raw));out.push({i:i,ok:true,data:d,raw:raw});}
+    catch(e){
+      let hint=e.message;
+      if(/,\s*[}\]]/.test(raw))hint="尾部多余逗号（trailing comma）";
+      else if(/'/.test(raw.replace(/[”’][^']*['“‘]/g,"")))hint="使用了单引号，JSON 标准只允许双引号";
+      out.push({i:i,ok:false,error:hint,raw:raw});
+    }
+  });
+  return out;
+}
+function flatten(n,acc){
+  acc=acc||[]; if(!n||typeof n!=="object")return acc;
+  if(Array.isArray(n)){n.forEach(x=>flatten(x,acc));return acc;}
+  acc.push(n);
+  if(n["@graph"])flatten(n["@graph"],acc);
+  ["mainEntity","itemListElement","hasVariant","item","acceptedAnswer","mainEntityOfPage","offers","review","aggregateRating"].forEach(k=>{if(n[k])flatten(n[k],acc);});
+  return acc;
+}
+function isEmptyVal(v){
+  if(v==null)return true;
+  if(typeof v==="string")return !v.trim()||/^(n\/?a|null|undefined|-|暂无|tbd)$/i.test(v.trim());
+  if(Array.isArray(v))return v.length===0;
+  if(typeof v==="object")return Object.keys(v).length===0;
+  return false;
+}
+function getType(n){const t=n["@type"];return Array.isArray(t)?t:[t].filter(Boolean);}
+
+function parsePage(html,url){
+  const doc=new DOMParser().parseFromString(html,"text/html");
+  const p={url:url,bytes:html.length,src:html.slice(0,300000)};
+  p.title=(($("title",doc)||{}).textContent||"").trim();
+  const meta={};
+  $$("meta",doc).forEach(m=>{
+    const k=(m.getAttribute("name")||m.getAttribute("property")||"").toLowerCase();
+    if(!k)return; (meta[k]=meta[k]||[]).push({c:(m.getAttribute("content")||"").trim(),raw:m.outerHTML});
+  });
+  p.meta=meta;
+  const robotsMeta=(meta.robots||[]).map(x=>x.c.toLowerCase()).join(" ");
+  p.robotsMeta=robotsMeta;
+  p.noSnippet=/nosnippet/.test(robotsMeta)||/max-snippet\s*:\s*-?0/.test(robotsMeta);
+  p.noIndex=/noindex/.test(robotsMeta);
+  p.hasLlms=false;
+  const link={};
+  $$("link",doc).forEach(l=>{const rel=(l.getAttribute("rel")||"").toLowerCase();if(!rel)return;(link[rel]=link[rel]||[]).push({href:l.getAttribute("href")||"",hreflang:l.getAttribute("hreflang")||""});});
+  p.link=link;
+  p.h1=$$("h1",doc).map(e=>e.textContent.trim());
+  p.h2=$$("h2",doc).map(e=>e.textContent.trim());
+  p.h3=$$("h3",doc).map(e=>e.textContent.trim());
+  p.imgs=$$("img",doc);
+  p.tables=$$("table",doc).length;
+  p.ld=extractJsonLd(doc);
+  p.types=[];
+  p.nodes=[];
+  p.ld.forEach(b=>{if(b.ok){const ns=flatten(b.data);p.nodes=p.nodes.concat(ns);ns.forEach(n=>getType(n).forEach(t=>{if(t&&p.types.indexOf(t)<0)p.types.push(t);}));}});
+  // metafield 未渲染痕迹
+  p.liquidLeft=(html.match(/\{\{[\s\S]{0,60}?\}\}/g)||[]).slice(0,8);
+  p.emptyMeta=$$("meta",doc).filter(m=>{const k=(m.getAttribute("name")||m.getAttribute("property")||"").toLowerCase();return /(description|og:|twitter:|product|cert|gtin|sku)/.test(k)&&!(m.getAttribute("content")||"").trim();}).map(m=>m.outerHTML.slice(0,110));
+  p.emptyDataFields=$$("[data-metafield],[data-field],[data-product-field],[data-sku],[data-gtin],[data-cert]",doc).filter(e=>!e.textContent.trim()).length;
+  // 正文
+  const clone=doc.body?doc.body.cloneNode(true):doc;
+  $$("script,style,noscript,svg,iframe",clone).forEach(e=>e.remove());
+  p.mainText=(clone.textContent||"").replace(/\s+/g," ").trim();
+  const mainEl=$("main",clone)||$("article",clone)||clone;
+  p.articleText=(mainEl.textContent||"").replace(/\s+/g," ").trim();
+  p.semantic={main:$$("main",doc).length,article:$$("article",doc).length,section:$$("section",doc).length,header:$$("header",doc).length,footer:$$("footer",doc).length,nav:$$("nav",doc).length};
+  p.liCount=$$("li",clone).length;
+  p.paraCount=$$("p",clone).length;
+  p.htmlSize=html.length;
+  p.textRatio=p.htmlSize?+(p.mainText.length/p.htmlSize).toFixed(3):0;
+  p.certs=(p.mainText.match(CERT_RE)||[]);
+  p.specs=[]; const sm={}; (p.mainText.match(SPEC_RE)||[]).forEach(s=>{const k=s.replace(/\s/g,"").toLowerCase();if(!sm[k]){sm[k]=1;p.specs.push(s.replace(/\s/g,""));}});
+  p.internalLinks=sameOriginLinks(html,url,200);
+  p.hasFaqLink=$$("a[href]",doc).some(a=>/(\/faq|\/qa|faq|常见问题|问答|knowledge|support\/faq)/i.test(a.getAttribute("href")||""));
+  p.isFaqPage=/(\/faq|\/qa|常见问题|问答)/i.test(url)||/常见问题|FAQ/i.test(p.title);
+  p.entities=extractEntities(p.articleText||p.mainText);
+  p.sentences=splitSentences(p.articleText||p.mainText);
+  p.answerDensity=answerDensity(p.sentences);
+  return p;
+}
+function splitSentences(t){
+  return t.split(/(?<=[。！？.!?;；])\s*/).map(s=>s.trim()).filter(s=>s.length>6);
+}
+function answerDensity(sents){
+  if(!sents.length)return {ratio:0,hits:0,total:0};
+  let hit=0;
+  sents.forEach(s=>{
+    if(/^[^，。]{4,40}(是|为|指|意味|等于|可达|支持|适用|属于|包括)/.test(s))hit++;
+    else if(/^[^，。]{0,60}[：:]/.test(s))hit++;
+    else if(/\d[\d\.,]*\s?(%|％|kW|kWh|Wh|A|V|mm|kg|MPa|bar|℃|°C|个月|年|小时|次)/.test(s))hit++;
+    else if(/^(第[一二三四五六七八九十]|首先|其次|最后|步骤\s*\d|[1-9]\.)/.test(s))hit++;
+  });
+  return {ratio:+(hit/sents.length).toFixed(3),hits:hit,total:sents.length};
+}
+function extractEntities(text){
+  if(!text)return [];
+  const t=text.replace(/[0-9a-zA-Z]+/g,m=>" "+m.toLowerCase()+" ");
+  const grams={};
+  for(let n=2;n<=4;n++){
+    for(let i=0;i+n<=text.length;i++){
+      const g=text.slice(i,i+n);
+      if(!/^[\u4e00-\u9fa5]+$/.test(g))continue;
+      if(STOP.has(g))continue;
+      if(/^[的了和是在我有就不都很到说要去你会着这那与或等中以为将并但其之于由被从对把用]/.test(g))continue;
+      grams[g]=(grams[g]||0)+1;
+    }
+  }
+  const en=(text.toLowerCase().match(/[a-z][a-z0-9\-\.]{2,}/g)||[]);
+  en.forEach(w=>{if(!STOP.has(w)&&w.length>3){grams[w]=(grams[w]||0)+1;}});
+  const arr=Object.keys(grams).map(k=>({k:k,c:grams[k]})).filter(x=>x.c>=2);
+  // 去掉被更长词完全覆盖的短词
+  arr.sort((a,b)=>b.c-a.c);
+  const keep=[];
+  arr.forEach(x=>{
+    if(keep.length>=30)return;
+    const covered=keep.some(y=>y.k.includes(x.k)&&y.c>=x.c*0.9);
+    if(!covered)keep.push(x);
+  });
+  return keep.slice(0,24).map(x=>x.k);
+}
+function parseRobots(txt){
+  const groups=[];let cur=null;
+  txt.split(/\r?\n/).forEach(line=>{
+    const l=line.replace(/#.*$/,"").trim(); if(!l)return;
+    const m=l.match(/^([a-z\-]+)\s*:\s*(.*)$/i); if(!m)return;
+    const k=m[1].toLowerCase(),v=m[2].trim();
+    if(k==="user-agent"){if(!cur||cur.agents.length) {cur={agents:[],rules:[]};groups.push(cur);} cur.agents.push(v.toLowerCase());}
+    else if((k==="disallow"||k==="allow")&&cur){cur.rules.push({t:k,v:v});}
+    else if(k==="sitemap"&&cur===null){}
+  });
+  const res={};
+  AI_BOTS.forEach(b=>{
+    const id=b.id.toLowerCase();
+    let g=groups.find(x=>x.agents.indexOf(id)>=0);
+    if(!g)g=groups.find(x=>x.agents.indexOf("*")>=0);
+    let blocked=false,allowAll=null;
+    if(g)g.rules.forEach(r=>{
+      if(r.t==="disallow"&&r.v==="/")blocked=true;
+      if(r.t==="allow"&&r.v==="/"&&r.t==="allow")allowAll=true;
+    });
+    res[b.id]={blocked:blocked,engine:b.eng,declared:!!groups.find(x=>x.agents.indexOf(id)>=0),allowAll:!!allowAll};
+  });
+  const sitemaps=(txt.match(/^\s*sitemap\s*:\s*(\S+)/gim)||[]).map(s=>s.split(/:\s*/)[1]);
+  return {bots:res,sitemaps:sitemaps};
+}
+
+/* ============ 五步诊断 ============ */
+function audit(pages,robots,llmsTxt,probes){
+  const issues=[];
+  const byUrl={};
+  pages.forEach(p=>byUrl[p.url]=p);
+  const I=(o)=>issues.push(Object.assign({pages:[]},o));
+  const add=(issueId,url,evidence)=>{const it=issues.find(x=>x.id===issueId);if(it){if(url&&it.pages.indexOf(url)<0)it.pages.push(url);if(evidence&&it.evidence.indexOf(String(evidence))<0&&it.evidence.length<4)it.evidence.push(String(evidence));}};
+
+  /* ---- STEP 1 代码层 ---- */
+  let s1={score:0,max:32};
+  pages.forEach(p=>{
+    if(p.isHome&&robots&&robots.bots){
+      Object.keys(robots.bots).forEach(b=>{if(robots.bots[b].blocked){
+        I({id:"robots-"+b,step:1,sev:"critical",title:"robots.txt 屏蔽 "+b,evidence:["Disallow: / 命中 "+b],
+          impact:b+" 负责 " +robots.bots[b].engine+" 的抓取与引用。被屏蔽等于在这些 AI 答案里完全不存在。",
+          fix:"在 robots.txt 中为该 UA 显式放行：User-agent: "+b+" / Allow: / / Disallow: 留空。仅当确需屏蔽训练用途时才保留 Google-Extended。"});
+      }});
+    }
+  });
+  I({id:"ld-syntax",step:1,sev:"critical",title:"JSON-LD 语法错误，解析器整块丢弃",evidence:[],
+    impact:"语法错误会让整个 script 块解析失败。该页所有结构化数据归零。AI 抽取器读不到任何实体。",
+    fix:"修复语法：删除尾部逗号、单引号改双引号、移除 HTML 注释。改完用 Schema Markup Validator 复验。",codex:1});
+  I({id:"ld-empty",step:1,sev:"high",title:"JSON-LD 脚本块为空",evidence:[],
+    impact:"模板输出了 script 标签但没输出内容。等同于结构性缺失。",
+    fix:"检查 Liquid 里生成 JSON-LD 的 if 判断条件，为空时要么不输出标签，要么补默认值。",codex:1});
+  I({id:"prod-required",step:1,sev:"critical",title:"Product 必填字段缺失或为空",evidence:[],
+    impact:"name / image / description / sku / brand / offers 是购物类 AI 的最低抽取门槛。缺任何一个，产品不会进入 ChatGPT 购物助手结果。",
+    fix:"补全六个必填字段。其中 offers 必须是对象或数组，含 price 与 priceCurrency。",codex:2});
+  I({id:"prod-gtin",step:1,sev:"critical",title:"gtin / mpn 缺失，产品无法与全球目录对齐",evidence:[],
+    impact:"gtin 是 AI 把你的产品与全球商品库对齐的唯一强标识。缺失时 AI 无法确认你卖的就是这个商品，引用概率大幅下降。",
+    fix:"把 GTIN 写进 metafield 并在模板输出 gtin13。无 GTIN 时至少给 mpn + brand。",codex:2});
+  I({id:"prod-offer",step:1,sev:"high",title:"Offer 字段不完整",evidence:[],
+    impact:"price / priceCurrency / availability 缺失，AI 无法回答价格和是否有货。购物类提问直接跳过。",
+    fix:"补全 offer 七个字段，availability 用 schema.org 标准值（InStock / OutOfStock / PreOrder）。",codex:2});
+  I({id:"prod-empty-val",step:1,sev:"high",title:"Schema 字段存在但值为空",evidence:[],
+    impact:"字段名为空串比字段缺失更糟。解析器拿到空值，会认为该属性无意义。",
+    fix:"模板层加判断：值为空时不输出该键，而不是输出空字符串。",codex:1});
+  I({id:"faq-noschema",step:1,sev:"high",title:"FAQ 页没有 FAQPage Schema",evidence:[],
+    impact:"AI Overviews 优先抽取带 FAQPage 标记的问答块。没有标记，问答内容只能靠正文猜测。",
+    fix:"给 FAQ 页加 FAQPage JSON-LD，mainEntity 里每问一个 Question 节点，acceptedAnswer 必填 text。",codex:2});
+  I({id:"faq-broken",step:1,sev:"critical",title:"FAQPage Schema 存在但结构非法",evidence:[],
+    impact:"mainEntity 不是数组，或 acceptedAnswer 缺 text。FAQ 标记整块失效。",
+    fix:"确认 mainEntity 为数组，每项含 @type:Question、name、acceptedAnswer.text。",codex:2});
+  I({id:"metafield-unrendered",step:1,sev:"critical",title:"metafield 有值但模板未渲染",evidence:[],
+    impact:"后台填了认证编号、材质、参数，前端 HTML 里找不到。AI 只读前端，读不到后台。等同于该信息不存在。",
+    fix:"在 product template 里输出这些 metafield，同时写入 JSON-LD 的 additionalProperty。",codex:1});
+  I({id:"liquid-left",step:1,sev:"medium",title:"HTML 中残留未渲染的 Liquid 变量",evidence:[],
+    impact:"残留花括号说明模板有分支未执行。爬虫看到的是变量名，不是值。",
+    fix:"排查该分支的赋值条件，补默认值。",codex:1});
+  I({id:"meta-desc",step:1,sev:"medium",title:"meta description 缺失或为空",evidence:[],
+    impact:"AI 摘要常直接取 meta description。缺失时改用正文首段，可控性下降。",
+    fix:"每页写 150 字以内、含核心实体与参数的 description。",codex:3});
+  I({id:"no-canonical",step:1,sev:"medium",title:"缺少 canonical",evidence:[],
+    impact:"参数页与重复页分散实体权重，AI 无法判断哪个是主版本。",
+    fix:"全站统一输出 self-referencing canonical。",codex:5});
+  I({id:"nosnippet",step:1,sev:"critical",title:"meta robots 禁用了片段，AI 无法引用",evidence:[],
+    impact:"nosnippet 或 max-snippet:0 会禁止搜索引擎与 AI 抓取文本片段。内容写得再标准，也不会被引用。",
+    fix:"删除 robots meta 中的 nosnippet。若只想限制搜索结果，改用 max-snippet:-1（不限长度）。",codex:1});
+  I({id:"noindex",step:1,sev:"critical",title:"页面设置 noindex",evidence:[],
+    impact:"noindex 页面不会被索引。AI 检索管线取不到，完全不可见。",
+    fix:"检查是否为模板误加。需要被 AI 引用的页面必须允许索引。",codex:1});
+  I({id:"no-ld",step:1,sev:"critical",title:"整页无任何 JSON-LD",evidence:[],
+    impact:"没有任何结构化数据，AI 只能靠正文盲猜。抽取准确率显著低于有标记的竞品。",
+    fix:"至少接入 Organization + WebSite + BreadcrumbList 三层。",codex:2});
+
+  /* ---- STEP 2 七层 Schema ---- */
+  I({id:"layer-org",step:2,sev:"high",title:"缺 Organization 层",evidence:[],impact:"AI 无法把站点与品牌实体绑定，引用时无法给出品牌名。",fix:"全站注入 Organization，含 name、url、logo、sameAs（社媒与 Wikidata）。",codex:2});
+  I({id:"layer-web",step:2,sev:"high",title:"缺 WebSite 层",evidence:[],impact:"缺站点级实体与 SearchAction，站内搜索结果无法被引用。",fix:"补 WebSite，含 potentialAction SearchAction。",codex:2});
+  I({id:"layer-bc",step:2,sev:"medium",title:"缺 BreadcrumbList 层",evidence:[],impact:"AI 无法判断页面在站点中的层级，分类归属模糊。",fix:"所有非首页输出 BreadcrumbList。",codex:2});
+  I({id:"layer-product",step:2,sev:"critical",title:"产品页缺 Product 层",evidence:[],impact:"产品页无 Product 标记，购物类 AI 直接跳过。",fix:"产品模板输出 Product，含完整字段。",codex:2});
+  I({id:"layer-offer",step:2,sev:"high",title:"缺 Offer 层",evidence:[],impact:"无法回答价格、库存、发货。",fix:"Product.offers 内嵌 Offer。",codex:2});
+  I({id:"layer-faq",step:2,sev:"high",title:"缺 FAQPage 层",evidence:[],impact:"问答抽取入口缺失。",fix:"FAQ 页与产品页 FAQ 区块输出 FAQPage。",codex:2});
+  I({id:"layer-review",step:2,sev:"medium",title:"缺 Review / AggregateRating 层",evidence:[],impact:"AI 无法引用评分。用户问「哪款好」时不会提及你。",fix:"接入评价数据，输出 AggregateRating（ratingValue、reviewCount）。",codex:2});
+
+  /* ---- STEP 3 内容结构 ---- */
+  I({id:"h1-multi",step:3,sev:"medium",title:"多个 H1 或无 H1",evidence:[],impact:"AI 无法确认页面主题句。",fix:"每页一个 H1，写清实体与核心参数。",codex:3});
+  I({id:"no-h2",step:3,sev:"high",title:"缺少 H2 分段，正文是一整块",evidence:[],impact:"AI 按块抽取。无小标题时整页只能整块引用，命中率下降。",fix:"每 200 到 300 字一个 H2，写成可独立成段的问题句。",codex:3});
+  I({id:"low-answer",step:3,sev:"critical",title:"答案密度低，正文是品牌故事不是信息块",evidence:[],impact:"AI 抽信息块，不读品牌故事。低密度页面无可用抽取单元。",fix:"把参数、结论、适用条件写成定义句与列表。结论段前置到首屏。",codex:3});
+  I({id:"no-list",step:3,sev:"medium",title:"缺少列表或表格，参数不可机器比对",evidence:[],impact:"参数散在段落里，AI 无法逐项对比。",fix:"参数用 table 或 ul 输出。",codex:3});
+  I({id:"img-alt",step:3,sev:"medium",title:"图片缺 alt",evidence:[],impact:"多模态检索与图文引用缺失入口。",fix:"所有图片补 alt，写成描述实体的短句。",codex:3});
+  I({id:"no-semantic",step:3,sev:"medium",title:"缺语义标签（main / article）",evidence:[],impact:"爬虫靠语义标签定位主内容。缺标签时导航与页脚会污染正文。",fix:"主内容包 main，单篇包 article。",codex:3});
+  I({id:"thin-text",step:3,sev:"high",title:"文本占比过低",evidence:[],impact:"正文被脚本与结构稀释，抽取信噪比低。",fix:"提升正文密度，减少内联脚本。",codex:3});
+
+  /* ---- STEP 4 实体与问答页 ---- */
+  I({id:"no-faq-page",step:4,sev:"critical",title:"没有独立问答页",evidence:[],impact:"每个问答页是一个 RAG 检索节点。没有问答页，等于没有可被单独检索的入口。",fix:"按实体建独立问答页，每页一个问题、一个答案块、一套 FAQPage Schema。",codex:4});
+  I({id:"thin-entity",step:4,sev:"high",title:"实体覆盖稀薄",evidence:[],impact:"实体数量决定 AI 能在多少种提问下命中你。",fix:"补全同义词、场景词、参数词、认证词、竞品对比词。",codex:4});
+  I({id:"no-internal",step:4,sev:"medium",title:"内链稀疏，实体之间无关联",evidence:[],impact:"实体孤岛。AI 无法建立实体间关系图。",fix:"在正文里用锚文本互链问答页与产品页。",codex:4});
+  I({id:"no-llmstxt",step:4,sev:"low",title:"站点根目录缺少 llms.txt",evidence:[],
+    impact:"llms.txt 是给 AI 爬虫看的站点说明书。缺失时 AI 只能靠猜站点结构和重点页面。属于加分项，不是排名因素。",
+    fix:"在根目录放 llms.txt：一段站点简介 + 重点页面链接清单。只放最希望被 AI 引用的页面，保持简洁。",codex:4});
+
+  /* ---- STEP 5 信源对齐 ---- */
+  I({id:"no-cert",step:5,sev:"high",title:"认证编号未在页面输出",evidence:[],impact:"认证是 B2B 与工业品的核心实体。AI 无法引用没写出来的编号。",fix:"把 ATEX / CE / UL / ISO 编号写进正文与 Schema 的 additionalProperty。",codex:5});
+  I({id:"spec-conflict",step:5,sev:"critical",title:"同一页面内规格数值自相矛盾",evidence:[],impact:"AI 交叉验证时发现冲突，会降低整站可信度并撤销引用。这是确凿错误。",fix:"确认最终口径，删除其余表述。同一参数在同一页面只保留一个数值。",codex:5});
+  I({id:"spec-divergence",step:5,sev:"medium",title:"跨页规格数值存在差异，需确认是否为同一参数",evidence:[],impact:"不同产品的正常差异不会扣分。但若同一参数写法不同，AI 会取错值或判定不可信。",fix:"逐项确认。同一参数统一数值与单位；不同产品则在正文写明型号，避免混淆。",codex:5});
+  I({id:"no-hreflang",step:5,sev:"medium",title:"多语言站缺 hreflang",evidence:[],impact:"AI 按语言分流时取错版本。",fix:"每个语言版本互相标注 hreflang 与 self canonical。",codex:5});
+  I({id:"no-sitemap",step:5,sev:"medium",title:"robots.txt 未声明 sitemap",evidence:[],impact:"爬虫发现新页变慢。",fix:"robots.txt 加 Sitemap 行。",codex:5});
+  I({id:"ext-align",step:5,sev:"high",title:"跨平台口径待核对（Amazon / 目录站 / 社媒）",evidence:[],impact:"官网与第三方平台参数不一致时，ChatGPT 与 Gemini 会停止引用或改用平台数据。",fix:"逐渠道核对同一参数，统一后再提交更新。",codex:5});
+
+  /* ---- 逐页检测 ---- */
+  const perPage=[];
+  pages.forEach(p=>{
+    const f={url:p.url,flags:[],notes:[]};
+    if(!p.ld.length){add("no-ld",p.url,"页面无任何 ld+json 脚本块");f.flags.push("no-ld");}
+    p.ld.forEach(b=>{
+      if(!b.ok&&b.error==="脚本块为空"){add("ld-empty",p.url,"第 "+(b.i+1)+" 个 script 块为空");f.flags.push("ld-empty");}
+      else if(!b.ok){add("ld-syntax",p.url,"第 "+(b.i+1)+" 块："+b.error);f.flags.push("ld-syntax");f.notes.push("语法错误: "+b.error);}
+    });
+    if(p.liquidLeft.length){add("liquid-left",p.url,p.liquidLeft[0]);f.flags.push("liquid-left");}
+    if(p.emptyMeta.length){add("metafield-unrendered",p.url,p.emptyMeta[0]);f.flags.push("metafield-unrendered");}
+    if(p.emptyDataFields>0){add("metafield-unrendered",p.url,p.emptyDataFields+" 个 data-* 字段元素为空");f.flags.push("metafield-unrendered");}
+
+    const products=p.nodes.filter(n=>getType(n).indexOf("Product")>=0);
+    const isProduct=/(\/product|\/products|\/p\/|\/item|product)/i.test(p.url)||products.length>0;
+    products.forEach(pr=>{
+      PRODUCT_REQ.forEach(k=>{if(isEmptyVal(pr[k])){add("prod-required",p.url,"Product."+k+" 为空");f.flags.push("prod-required");}});
+      const hasGtin=GTIN_KEYS.some(k=>!isEmptyVal(pr[k]));
+      if(!hasGtin){add("prod-gtin",p.url,"Product 无 gtin13/gtin/mpn");f.flags.push("prod-gtin");}
+      const off=pr.offers?(Array.isArray(pr.offers)?pr.offers[0]:pr.offers):null;
+      if(!off){add("prod-offer",p.url,"offers 为空");f.flags.push("prod-offer");}
+      else{const miss=OFFER_KEYS.filter(k=>isEmptyVal(off[k]));if(miss.length){add("prod-offer",p.url,"Offer 缺 "+miss.join("/"));f.flags.push("prod-offer");}}
+      const empties=Object.keys(pr).filter(k=>!k.startsWith("@")&&isEmptyVal(pr[k]));
+      if(empties.length>=2){add("prod-empty-val",p.url,"空值字段: "+empties.slice(0,4).join(", "));f.flags.push("prod-empty-val");}
+    });
+    if(isProduct&&!products.length){add("layer-product",p.url,"产品页无 Product 节点");f.flags.push("layer-product");}
+
+    const faqs=p.nodes.filter(n=>getType(n).indexOf("FAQPage")>=0);
+    if(p.isFaqPage&&!faqs.length){add("faq-noschema",p.url,"FAQ 页无 FAQPage 节点");f.flags.push("faq-noschema");}
+    faqs.forEach(fq=>{
+      const me=fq.mainEntity;
+      if(!Array.isArray(me)||!me.length){add("faq-broken",p.url,"mainEntity 非数组或为空");f.flags.push("faq-broken");}
+      else{const bad=me.filter(q=>!q||getType(q).indexOf("Question")<0||!q.acceptedAnswer||isEmptyVal(q.acceptedAnswer.text));
+        if(bad.length){add("faq-broken",p.url,bad.length+"/"+me.length+" 个问题缺 acceptedAnswer.text");f.flags.push("faq-broken");}}
+    });
+
+    // 七层
+    const hasType=t=>p.nodes.some(n=>getType(n).some(x=>String(x).indexOf(t)>=0));
+    SEVEN_LAYER.forEach(L=>{
+      const key=L.t.split("/")[0];
+      let hit=hasType(key);
+      if(L.t==="Offer"&&!hit)hit=p.nodes.some(n=>getType(n).indexOf("Product")>=0&&!isEmptyVal(n.offers));
+      if(L.t==="Review/AggregateRating"&&!hit)hit=p.nodes.some(n=>getType(n).indexOf("Product")>=0&&(!isEmptyVal(n.aggregateRating)||!isEmptyVal(n.review)));
+      let applicable=true;
+      if(L.t==="Product"||L.t==="Offer")applicable=isProduct;
+      else if(L.t==="FAQPage")applicable=(isProduct||p.isFaqPage);
+      if(!hit&&applicable)add(LAYER_ID[L.t],p.url,p.url);
+    });
+
+    // meta
+    const desc=(p.meta.description||[])[0];
+    if(!desc||!desc.c){add("meta-desc",p.url,"meta description 为空");f.flags.push("meta-desc");}
+    if(!(p.link.canonical||[]).length){add("no-canonical",p.url,"无 canonical");f.flags.push("no-canonical");}
+    if(p.noSnippet){add("nosnippet",p.url,'meta robots="'+p.robotsMeta+'"');f.flags.push("nosnippet");}
+    if(p.noIndex){add("noindex",p.url,'meta robots="'+p.robotsMeta+'"');f.flags.push("noindex");}
+
+    // 内容结构
+    if(p.h1.length!==1){add("h1-multi",p.url,"H1 数量 = "+p.h1.length);f.flags.push("h1-multi");}
+    if(p.h2.length===0){add("no-h2",p.url,"H2 数量 = 0");f.flags.push("no-h2");}
+    if(p.answerDensity.total>=5&&p.answerDensity.ratio<0.18){add("low-answer",p.url,"答案密度 "+(p.answerDensity.ratio*100).toFixed(0)+"% ("+p.answerDensity.hits+"/"+p.answerDensity.total+")");f.flags.push("low-answer");}
+    if(p.liCount<5&&p.tables===0){add("no-list",p.url,"li="+p.liCount+" table="+p.tables);f.flags.push("no-list");}
+    const noAlt=p.imgs.filter(i=>!(i.getAttribute("alt")||"").trim()).length;
+    if(p.imgs.length&&noAlt/p.imgs.length>0.4){add("img-alt",p.url,noAlt+"/"+p.imgs.length+" 张图无 alt");f.flags.push("img-alt");}
+    if(!p.semantic.main&&!p.semantic.article){add("no-semantic",p.url,"无 main / article");f.flags.push("no-semantic");}
+    if(p.textRatio<0.06){add("thin-text",p.url,"文本/HTML = "+p.textRatio);f.flags.push("thin-text");}
+
+    // 实体与问答
+    if(p.entities.length<6){f.flags.push("thin-entity");}
+
+    // 信源
+    if(!p.certs.length&&isProduct){add("no-cert",p.url,"正文无认证编号");f.flags.push("no-cert");}
+    perPage.push(f);
+  });
+
+  // 全站问答页覆盖
+  const faqPages=pages.filter(p=>p.isFaqPage);
+  if(!faqPages.length){const h=pages[0];add("no-faq-page",h?h.url:"","全站未见 FAQ / 问答路径页面");}
+
+  // 多语言站 hreflang（仅当检测到多语言迹象时判定，避免单语站误报）
+  const hasHreflang=pages.some(p=>(p.link.alternate||[]).some(l=>l.hreflang));
+  const multiLang=!hasHreflang&&pages.some(p=>/\/([a-z]{2}(-[a-z]{2})?)\//i.test(p.url)||p.internalLinks.some(u=>/\/(en|zh|de|fr|es|ja|ko|ru|it|pt|ar)(-|_|$|\/)/i.test(u)));
+  if(multiLang){const h=pages[0];add("no-hreflang",h?h.url:"","检测到多语言路径但无 hreflang 标注");}
+
+  // 站点级实体覆盖
+  const entSet={}; pages.forEach(p=>p.entities.forEach(e=>entSet[e]=1));
+  const entTotal=Object.keys(entSet).length;
+  if(entTotal<15){const h0=pages[0];add("thin-entity",h0?h0.url:"","全站去重实体数 "+entTotal+"（建议 ≥ 15）");}
+  // 站点级内链
+  const linkSet={}; pages.forEach(p=>p.internalLinks.forEach(u=>linkSet[u]=1));
+  const linkTotal=Object.keys(linkSet).length;
+  if(linkTotal<15){const h1=pages[0];add("no-internal",h1?h1.url:"","全站去重内链 "+linkTotal+" 个（建议 ≥ 15）");}
+
+  // 规格数值：页内确凿冲突 + 跨页差异待确认
+  const conflicts=[],divergences=[];
+  const specMap={};
+  pages.forEach(p=>{
+    const inPage={};
+    (p.specs||[]).forEach(s=>{
+      const m=s.match(/^([\d\.,]+)(.+)$/); if(!m)return;
+      const unit=m[2]; const val=parseFloat(m[1].replace(/,/g,""));
+      if(isNaN(val))return;
+      (specMap[unit]=specMap[unit]||[]).push({v:val,p:p.url});
+      (inPage[unit]=inPage[unit]||[]).push(val);
+    });
+    Object.keys(inPage).forEach(u=>{
+      const uniq=Array.from(new Set(inPage[u]));
+      if(uniq.length>1){
+        conflicts.push({unit:u,inPage:true,pages:[p.url],variants:uniq.map(v=>({v:v,pages:[p.url]}))});
+        add("spec-conflict",p.url,"同页内 "+u+" 出现 "+uniq.length+" 种数值: "+uniq.join(" / "));
+      }
+    });
+  });
+  Object.keys(specMap).forEach(u=>{
+    const byPage={}; specMap[u].forEach(x=>{(byPage[x.p]=byPage[x.p]||[]).push(x.v);});
+    const pgs=Object.keys(byPage);
+    if(pgs.length<2)return;
+    const allVals=Array.from(new Set(specMap[u].map(x=>x.v)));
+    if(allVals.length>1){
+      divergences.push({unit:u,pages:pgs.slice(0,4),variants:allVals.map(v=>({v:v,pages:specMap[u].filter(x=>x.v===v).map(x=>x.p).slice(0,2)}))});
+      add("spec-divergence",pgs[0],u+" 跨页出现 "+allVals.length+" 种数值: "+allVals.join(" / "));
+    }
+  });
+
+  // robots
+  if(robots){
+    if(!robots.sitemaps.length){add("no-sitemap","","robots.txt 未声明 Sitemap");}
+  }
+  // llms.txt（仅在真实抓取时已知结果，上传/粘贴模式不判定，避免误报）
+  if(llmsTxt===false){const h2=pages[0];add("no-llmstxt",h2?h2.url:"","根目录 /llms.txt 返回 404 或非文本内容");}
+  const ext=pages[0];
+  if(ext)add("ext-align",ext.url,"需人工核对 Amazon / 目录站 / 社媒上的同类参数");
+
+  // 清理未命中的项
+  const active=issues.filter(i=>i.pages.length>0||i.always);
+  active.sort((a,b)=>SEV_ORDER[a.sev]-SEV_ORDER[b.sev]||a.step-b.step);
+
+  const mto=mtoAudit(pages,probes,llmsTxt);
+
+  /* ---- 评分 ---- */
+  const cnt=id=>{const it=issues.find(x=>x.id===id);return it?it.pages.length:0;};
+  const n=pages.length||1;
+  const s1v=Math.max(0,32-Math.min(32,
+     cnt("ld-syntax")*6+cnt("ld-empty")*2+cnt("no-ld")*4+cnt("prod-required")*3+cnt("prod-gtin")*4+
+     cnt("prod-offer")*2+cnt("prod-empty-val")*2+cnt("faq-noschema")*3+cnt("faq-broken")*4+
+     cnt("metafield-unrendered")*4+cnt("liquid-left")*1+cnt("meta-desc")*1+cnt("no-canonical")*1+
+     cnt("nosnippet")*6+cnt("noindex")*5+
+     (robots?Object.keys(robots.bots).filter(b=>robots.bots[b].blocked).length*3:0))/Math.max(1,Math.sqrt(n)));
+  const layerScore=SEVEN_LAYER.reduce((a,L)=>{
+    const id="layer-"+L.t.toLowerCase().split("/")[0];
+    const hit=pages.some(p=>p.nodes.some(nd=>getType(nd).some(t=>String(t).indexOf(L.t.split("/")[0])>=0)));
+    return a+(hit?L.w:0);
+  },0);
+  const s2v=Math.round(layerScore/SEVEN_LAYER.reduce((a,b)=>a+b.w,0)*22);
+  const s3v=Math.max(0,18-Math.min(18,
+     cnt("h1-multi")*0.8+cnt("no-h2")*2.5+cnt("low-answer")*3+cnt("no-list")*1.2+
+     cnt("img-alt")*1+cnt("no-semantic")*1.5+cnt("thin-text")*2)/Math.max(1,Math.sqrt(n)));
+  const s4v=Math.max(0,16-Math.min(16,cnt("no-faq-page")*5+cnt("thin-entity")*1.5/Math.max(1,Math.sqrt(n))+cnt("no-internal")*0.8/Math.max(1,Math.sqrt(n))));
+  const s5v=Math.max(0,12-Math.min(12,cnt("spec-conflict")*4+cnt("spec-divergence")*0.6+cnt("no-cert")*1.5/Math.max(1,Math.sqrt(n))+cnt("no-sitemap")*1+cnt("ext-align")*0.5));
+  const total=Math.round(s1v+s2v+s3v+s4v+s5v);
+  return {
+    pages:pages,perPage:perPage,issues:active,conflicts:conflicts,divergences:divergences,robots:robots,
+    entTotal:entTotal,linkTotal:linkTotal,
+    mto:mto,
+    steps:[
+      {k:1,name:"代码层漏洞",score:Math.round(s1v),max:32},
+      {k:2,name:"Schema 完整度",score:Math.round(s2v),max:22},
+      {k:3,name:"内容结构",score:Math.round(s3v),max:18},
+      {k:4,name:"实体与问答页",score:Math.round(s4v),max:16},
+      {k:5,name:"信源一致性",score:Math.round(s5v),max:12}
+    ],
+    total:Math.max(0,Math.min(100,total))
+  };
+}
+
+/* ============ Codex 提示词 ============ */
+function codexPrompt(step,domain,ctx){
+  const d=domain||"该站点";
+  const P=[
+`请以 Google AI Overviews 抓取器和 ChatGPT 购物助手的双重视角，扫描 ${d} 的代码层。列出：
+· Product Schema 字段为空或缺失的页面；
+· JSON-LD 语法错误导致解析失败的页面；
+· 没有 FAQPage Schema 的 FAQ 页；
+· metafield 有值但模板未渲染的字段。
+输出问题清单，按对 AI 引用的影响程度排序，并给出 Liquid 模板修改建议。
+附：本次扫描已定位 ${ctx}。请仅针对上述清单逐项给出 diff，不要改无关代码。`,
+`请生成七层 Schema 的 JSON-LD 代码，用 Liquid 变量动态调用产品数据，覆盖 Organization / WebSite / BreadcrumbList / Product / Offer / FAQPage / Review。
+要求：
+· 所有字段走 metafield，模板一次改完全站；
+· gtin13 为空时自动回退 mpn + brand；
+· FAQ 部分从 metafield 数组循环输出，mainEntity 必须是数组；
+· 值为空时不输出该键，禁止输出空字符串。
+先给出 Liquid 代码片段，再给一个渲染后的静态示例。`,
+`请把 ${d} 的产品页正文从「人看得懂」改写成「AI 抽得走」。规则：
+· 删除品牌故事段落，或压缩到 60 字以内；
+· 每 200 到 300 字一个 H2，H2 写成可被单独检索的问题句；
+· 参数全部改为 table 或 ul，逐项列出；
+· 每段首句必须是结论或定义句，含具体数值与单位；
+· 结论段前置到首屏。
+输出改写前后对照，只改结构不新增事实。`,
+`请为 ${d} 铺实体和独立问答页。步骤：
+· 从现有正文与产品参数中提取行业实体，补齐同义词、场景词、参数词、认证词、竞品对比词；
+· 每个高价值实体建一个独立问答页：一个问题、一个答案块、一套 FAQPage Schema；
+· 问答页之间用锚文本互链，并回链对应产品页；
+· 输出页面 URL 建议、标题、H1、答案块正文与 JSON-LD。
+目标：每个问答页都是一个可被 RAG 单独检索的节点。`,
+`请对 ${d} 做跨平台信源对齐与 AI 引用验证：
+· 列出官网与 Amazon / 目录站 / 社媒上同一参数的当前口径，标出冲突项；
+· 给出统一后的标准口径，需要改哪些页面和哪些渠道；
+· 生成验证话术，分别在 ChatGPT、Gemini、Perplexity 中提问，记录是否被引用及引用的是哪个来源。
+注意：只输出核对清单与话术，不要臆测未核实的第三方数据。`
+  ];
+  return P[step-1];
+}
+
+/* ============ 代码生成 ============ */
+function sampleVals(pages){
+  const p=pages[0]||{};
+  let prod=null;
+  for(const pg of pages){const x=pg.nodes.find(n=>getType(n).indexOf("Product")>=0);if(x){prod=x;break;}}
+  let host=""; try{host=new URL(p.url||"https://example.com").hostname;}catch(e){host="example.com";}
+  const brand=(prod&&prod.brand&&(prod.brand.name||prod.brand))||host.split(".")[0];
+  const name=(prod&&prod.name)||p.title||"产品名称";
+  const sku=(prod&&prod.sku)||"";
+  const price=(prod&&prod.offers&&(Array.isArray(prod.offers)?prod.offers[0]:prod.offers).price)||"";
+  const cur=(prod&&prod.offers&&(Array.isArray(prod.offers)?prod.offers[0]:prod.offers).priceCurrency)||"USD";
+  const desc=((p.meta.description||[])[0]||{}).c||(prod&&prod.description)||"";
+  return {host:host,brand:brand,name:name,sku:sku,price:price,cur:cur,desc:desc.slice(0,180),url:p.url||("https://"+host)};
+}
+function genJsonLd(v){
+  const o={
+    "@context":"https://schema.org",
+    "@graph":[
+      {"@type":"Organization","@id":"https://"+v.host+"/#org","name":v.brand,"url":"https://"+v.host+"/",
+       "logo":"https://"+v.host+"/logo.png","sameAs":["https://www.linkedin.com/company/"+v.brand]},
+      {"@type":"WebSite","@id":"https://"+v.host+"/#site","url":"https://"+v.host+"/","name":v.brand,
+       "publisher":{"@id":"https://"+v.host+"/#org"},
+       "potentialAction":{"@type":"SearchAction","target":"https://"+v.host+"/search?q={search_term_string}","query-input":"required name=search_term_string"}},
+      {"@type":"BreadcrumbList","itemListElement":[
+        {"@type":"ListItem","position":1,"name":"Home","item":"https://"+v.host+"/"},
+        {"@type":"ListItem","position":2,"name":v.name,"item":v.url}]},
+      {"@type":"Product","@id":v.url+"#product","name":v.name,"sku":v.sku||"待补充","gtin13":"待补充",
+       "mpn":v.sku||"待补充","brand":{"@type":"Brand","name":v.brand},
+       "description":v.desc||"待补充","image":["https://"+v.host+"/img/main.jpg"],
+       "additionalProperty":[{"@type":"PropertyValue","name":"认证","value":"待补充"}],
+       "offers":{"@type":"Offer","url":v.url,"price":v.price||"待补充","priceCurrency":v.cur,
+         "availability":"https://schema.org/InStock","itemCondition":"https://schema.org/NewCondition",
+         "seller":{"@id":"https://"+v.host+"/#org"}},
+       "aggregateRating":{"@type":"AggregateRating","ratingValue":"待补充","reviewCount":"待补充"}},
+      {"@type":"FAQPage","mainEntity":[
+        {"@type":"Question","name":"待补充问题一","acceptedAnswer":{"@type":"Answer","text":"待补充答案，首句给结论，含数值与单位。"}},
+        {"@type":"Question","name":"待补充问题二","acceptedAnswer":{"@type":"Answer","text":"待补充答案。"}}]}
+    ]
+  };
+  return "<script type=\"application/ld+json\">\n"+JSON.stringify(o,null,2)+"\n<\/script>";
+}
+function genLiquid(v){
+  return [
+"{%- comment -%} 七层 Schema · Shopify Liquid · 全站通用 {%- endcomment -%}",
+"{%- assign org = shop.name -%}",
+"{%- assign host = shop.permanent_domain -%}",
+"<script type=\"application/ld+json\">",
+"{",
+"  \"@context\": \"https://schema.org\",",
+"  \"@graph\": [",
+"    { \"@type\": \"Organization\", \"@id\": \"https://{{ host }}/#org\", \"name\": {{ org | json }},",
+"      \"url\": \"https://{{ host }}/\", \"logo\": {{ settings.logo | image_url: width: 600 | prepend: 'https:' | json }} },",
+"    { \"@type\": \"WebSite\", \"@id\": \"https://{{ host }}/#site\", \"url\": \"https://{{ host }}/\",",
+"      \"name\": {{ org | json }}, \"publisher\": { \"@id\": \"https://{{ host }}/#org\" },",
+"      \"potentialAction\": { \"@type\": \"SearchAction\", \"target\": \"https://{{ host }}/search?q={search_term_string}\", \"query-input\": \"required name=search_term_string\" } },",
+"    { \"@type\": \"BreadcrumbList\", \"itemListElement\": [",
+"      { \"@type\": \"ListItem\", \"position\": 1, \"name\": \"Home\", \"item\": \"https://{{ host }}/\" },",
+"      { \"@type\": \"ListItem\", \"position\": 2, \"name\": {{ product.title | json }}, \"item\": \"https://{{ host }}{{ product.url }}\" } ] },",
+"{%- if template contains 'product' -%}",
+"    { \"@type\": \"Product\", \"@id\": \"https://{{ host }}{{ product.url }}#product\",",
+"      \"name\": {{ product.title | json }},",
+"      \"description\": {{ product.description | strip_html | truncate: 300 | json }},",
+"      \"sku\": {{ product.selected_or_first_available_variant.sku | json }},",
+"      {%- assign gtin = product.selected_or_first_available_variant.barcode -%}",
+"      {%- if gtin != blank -%}\"gtin13\": {{ gtin | json }},{%- endif -%}",
+"      {%- if gtin == blank -%}\"mpn\": {{ product.selected_or_first_available_variant.sku | json }},{%- endif -%}",
+"      \"brand\": { \"@type\": \"Brand\", \"name\": {{ product.vendor | default: org | json }} },",
+"      \"image\": [ {%- for img in product.images limit: 4 -%}\"https:{{ img | image_url: width: 1200 }}\"{%- unless forloop.last -%},{%- endunless -%}{%- endfor -%} ],",
+"      {%- assign cert = product.metafields.custom.certification -%}",
+"      {%- if cert != blank -%}",
+"      \"additionalProperty\": [ { \"@type\": \"PropertyValue\", \"name\": \"认证\", \"value\": {{ cert | json }} } ],",
+"      {%- endif -%}",
+"      \"offers\": { \"@type\": \"Offer\", \"url\": \"https://{{ host }}{{ product.url }}\",",
+"        \"price\": {{ product.selected_or_first_available_variant.price | divided_by: 100.0 | json }},",
+"        \"priceCurrency\": {{ cart.currency.iso_code | json }},",
+"        \"availability\": \"{% if product.available %}https://schema.org/InStock{% else %}https://schema.org/OutOfStock{% endif %}\",",
+"        \"itemCondition\": \"https://schema.org/NewCondition\",",
+"        \"seller\": { \"@id\": \"https://{{ host }}/#org\" } }{%- if product.metafields.reviews.rating -%},",
+"      \"aggregateRating\": { \"@type\": \"AggregateRating\",",
+"        \"ratingValue\": {{ product.metafields.reviews.rating.value | json }},",
+"        \"reviewCount\": {{ product.metafields.reviews.rating_count | json }} }{%- endif -%}",
+"    }{%- if product.metafields.custom.faq -%},",
+"    { \"@type\": \"FAQPage\", \"mainEntity\": [",
+"      {%- for qa in product.metafields.custom.faq.value -%}",
+"      { \"@type\": \"Question\", \"name\": {{ qa.question | json }},",
+"        \"acceptedAnswer\": { \"@type\": \"Answer\", \"text\": {{ qa.answer | json }} } }{%- unless forloop.last -%},{%- endunless -%}",
+"      {%- endfor -%} ] }{%- endif -%}",
+"{%- endif -%}",
+"  ]",
+"}",
+"<\/script>"
+  ].join("\n");
+}
+
+/* ============ MTO 诊断与评分 ============ */
+// 只输出诊断与建议。不生成任何修复代码。
+function mtoGrade(t){
+  if(t>=75)return {l:"机器可核验",c:"var(--ok)"};
+  if(t>=50)return {l:"部分可核验",c:"var(--acc2)"};
+  if(t>=25)return {l:"机器难以核验",c:"var(--warn)"};
+  return {l:"机器不可见",c:"var(--crit)"};
+}
+function mtoAudit(pages,probes,llmsTxt){
+  probes=probes||[];
+  const n=pages.length||1;
+  const hit={};               // 探测结果按 key 归组
+  probes.forEach(pr=>{
+    const cur=hit[pr.k];
+    const live=(pr.status===200||pr.status===401||pr.status===403);
+    if(!cur||(live&&!cur.live))hit[pr.k]=Object.assign({},pr,{live:live});
+    else if(live)hit[pr.k].live=true;
+  });
+  const has=k=>!!(hit[k]&&hit[k].live);
+  const probed=probes.some(p=>p.status>0);   // 是否有一次有效回应
+
+  /* ---- 静态信号 ---- */
+  const sig={mcp:false,a2a:false,api:false,validity:false,std:false,fresh:false,trust:false,audit:false,certBody:false};
+  let certPages=0,stdPages=0,validPages=0,freshPages=0,noAltPages=0;
+  pages.forEach(p=>{
+    const s=p.src||"";
+    if(MTO_RE.mcp.test(s))sig.mcp=true;
+    if(MTO_RE.a2a.test(s))sig.a2a=true;
+    if(MTO_RE.api.test(s))sig.api=true;
+    if(MTO_RE.trust.test(s))sig.trust=true;
+    if(MTO_RE.audit.test(s))sig.audit=true;
+    if(MTO_RE.certBody.test(s))sig.certBody=true;
+    const certs=(s.match(CERT_RE)||[]);
+    if(certs.length){certPages++;}
+    if(MTO_RE.std.test(s)){sig.std=true;stdPages++;}
+    if(MTO_RE.validity.test(s)){sig.validity=true;validPages++;}
+    if(MTO_RE.fresh.test(s))freshPages++;
+    if(p.imgs&&p.imgs.length&&p.imgs.some(im=>!(im.getAttribute("alt")||"").trim()))noAltPages++;
+  });
+
+  // 口径一致性：与 GEO 第 5 步同一套判定
+  const unitMap={};
+  pages.forEach(p=>{(p.specs||[]).forEach(s=>{
+    const mm=s.match(/^([\d\.,]+)(.+)$/); if(!mm)return;
+    const unit=mm[2]; const v=parseFloat(mm[1].replace(/,/g,""));
+    (unitMap[unit]=unitMap[unit]||[]).push({v:v,p:p.url});
+  });});
+  let inPageConflict=0,crossDiff=0;
+  Object.keys(unitMap).forEach(unit=>{
+    const byPage={}; unitMap[unit].forEach(x=>{(byPage[x.p]=byPage[x.p]||[]).push(x.v);});
+    Object.keys(byPage).forEach(pg=>{if(new Set(byPage[pg]).size>1)inPageConflict++;});
+    if(Object.keys(byPage).length>1&&new Set(unitMap[unit].map(x=>x.v)).size>1)crossDiff++;
+  });
+
+  /* ---- 逐项评分 ---- */
+  const L=[{k:1,name:"L1 证据链层",max:25,s:0,d:"每条对外主张都能指向可核验的原始证据"},
+           {k:2,name:"L2 机器可读层",max:25,s:0,d:"字段标准化、语义无歧义、有机器可读入口"},
+           {k:3,name:"L3 信任量化层",max:15,s:0,d:"可复算、可解释、可审计（实验性）"},
+           {k:4,name:"L4 协议与执行层",max:35,s:0,d:"MCP + A2A + 接口可被外部智能体自主调用"}];
+  const G=i=>L[i];
+  const issues=[];
+  const add=(sev,layer,title,evidence,impact,advice)=>issues.push({sev:sev,layer:layer,title:title,evidence:evidence,impact:impact,advice:advice});
+  const u=evidence=>Array.isArray(evidence)?evidence.slice(0,3):[evidence];
+
+  // L1 证据链 25
+  let l1=0;
+  const certRatio=certPages/n;
+  l1+=Math.round(certRatio*8);
+  l1+=Math.round((validPages/n)*7);
+  l1+=Math.round((stdPages/n)*6);
+  l1+=sig.certBody?4:0;
+  G(0).s=Math.min(25,l1);
+  if(certPages===0)add("critical",1,"页面未输出任何认证编号",
+    u(["全站 "+n+" 页未匹配到 ATEX / CE / UL / ISO / IP 等级等认证编号"]),
+    "机器核验主张时找不到可对照的第三方凭据，证据链在最底层就断了。",
+    "把认证编号写进正文与 Schema 的 additionalProperty，并标明签发方。");
+  else if(certRatio<0.5)add("high",1,"仅部分页面输出认证编号",
+    u([certPages+"/"+n+" 页含认证编号"]),
+    "证据覆盖不完整。机器在不同页面间核验同一品牌时会得到不一致的证据强度。",
+    "把认证信息做成站点级字段，全站模板统一输出，不要只在部分页面手写。");
+  if(validPages===0&&certPages>0)add("high",1,"认证编号未标注签发方与有效期",
+    u(["匹配到认证编号，但未匹配到「有效期 / 签发机构 / 证书编号」等字段"]),
+    "没有签发方与有效期的编号无法被独立核验，机器只能当作字符串，不能当作证据。",
+    "每个认证编号旁补签发机构名称、证书编号、有效期起止。");
+  if(stdPages===0)add("medium",1,"未引用可核验的标准依据",
+    u(["未匹配到 GB / ISO / IEC / EN / ASTM / JIS 等标准号"]),
+    "参数是自述的还是按标准测得的，机器无法判断。自述参数的证据强度显著低于标准依据。",
+    "在参数表旁标注测试标准号与方法，例如「依据 ISO 9906 测得」。");
+  if(!sig.certBody)add("low",1,"未见指向发证机构的溯源链接",
+    u(["未匹配到 TUV / SGS / Intertek / UL 等发证机构域名或名称"]),
+    "证据链最后一环是可回溯到发证方。缺环时机器无法完成独立核验。",
+    "给认证编号加上发证机构官网或证书查询页的外链。");
+
+  // L2 机器可读 25
+  let l2=0;
+  if(llmsTxt)l2+=6;
+  if(has("llms-full"))l2+=4;
+  if(has("ai-txt")||has("ai-txt2"))l2+=2;
+  const altRatio=1-(noAltPages/n);
+  l2+=Math.round(altRatio*6);
+  l2+=Math.max(0,7-inPageConflict*3-crossDiff);   // 字段口径标准化
+  G(1).s=Math.min(25,l2);
+  if(!llmsTxt)add("medium",2,"缺少 llms.txt",
+    u(["根目录 /llms.txt 未返回有效内容"]),
+    "没有面向机器的结构化入口，Agent 只能用通用爬虫解析整页，读取成本高、歧义大。",
+    "在根目录提供 llms.txt，列出站点结构、核心页面与关键事实的直达链接。");
+  if(!has("llms-full"))add("low",2,"缺少 llms-full.txt",
+    u(["/llms-full.txt 未返回有效内容"]),
+    "llms.txt 只给索引。完整知识文件才能让 Agent 一次性读到全部可核验事实。",
+    "补充 llms-full.txt，把产品事实、参数、认证、口径写成纯文本。");
+  if(noAltPages>0)add("medium",2,"关键事实可能只由图片承载",
+    u([noAltPages+" 页存在无 alt 的图片"]),
+    "图片与扫描件里的参数机器读不到。关键事实若只在图里，等于对机器不存在。",
+    "把图片中的参数同步写成文本，并为图片补 alt。");
+  else if(pages.length)add("pass",2,"图片 alt 覆盖完整",u(["全部页面图片均有 alt"]),"—","维持现状。");
+
+  // L3 信任量化 15（实验性）
+  let l3=0;
+  l3+=Math.max(0,6-inPageConflict*3-crossDiff);   // 一致性：可复算的前提
+  l3+=Math.round((freshPages/n)*5);
+  l3+=(sig.audit||has("sec-txt"))?4:0;
+  G(2).s=Math.min(15,l3);
+  if(inPageConflict)add("high",3,"同一页面内规格数值自相矛盾",
+    u([inPageConflict+" 处同页同单位出现多个数值"]),
+    "同一事实存在两个版本时，信任分无法复算。机器核验会直接判定不可信。",
+    "确定最终口径，同一参数在同一页面只保留一个数值。");
+  else if(crossDiff)add("medium",3,"跨页规格数值存在差异",
+    u([crossDiff+" 个单位在不同页面出现不同数值"]),
+    "可能是不同型号的正常差异，也可能是同一参数写法不一。机器无法自行区分。",
+    "逐项确认。同一参数统一数值与单位，不同型号在正文写明型号名。");
+  if(freshPages===0)add("medium",3,"缺少数据时效性声明",
+    u(["未匹配到 dateModified / lastUpdated / 更新于 等时效字段"]),
+    "机器无法判断证据是否过期。过期证据在信任计算中会被降权或排除。",
+    "为每个可核验事实加 dateModified 或明确的数据截止日期。");
+  if(!sig.audit&&!has("sec-txt"))add("low",3,"未见审计留痕或可追溯声明",
+    u(["未匹配到审计 / 留痕 / 可追溯表述，且无 security.txt"]),
+    "信任量化要求可审计。没有任何留痕机制时，信任分无法复算与复盘。",
+    "记录机器访问与决策依据，并对外提供可查询的访问留痕入口。");
+  if(sig.trust)add("pass",3,"页面出现信任度相关表述",
+    u(["匹配到 trust score / 信任分 等表述"]),
+    "—",
+    "注意：MTO 信任量化指标目前处于实验性阶段，未经真实交易场景验证，不要对外做商业承诺。");
+
+  // L4 协议与执行 35
+  let l4=0;
+  const a2aOk=has("a2a-card")||has("a2a-card2");
+  const mcpOk=has("mcp-wk")||has("mcp-root")||has("mcp-sse")||has("sse")||has("mcp-api");
+  const apiOk=has("openapi")||has("openapi2")||has("swagger")||has("apidocs");
+  if(a2aOk)l4+=12;
+  if(mcpOk)l4+=12;
+  if(apiOk)l4+=6;
+  if(has("ai-plugin"))l4+=2;
+  let decl=0; if(sig.mcp)decl+=2; if(sig.a2a)decl+=2; if(sig.api)decl+=1;
+  if(!a2aOk&&!mcpOk&&!apiOk)l4+=Math.min(5,decl);
+  // Agent Card 字段完整度
+  let cardMiss=[];
+  const card=hit["a2a-card"]||hit["a2a-card2"];
+  if(card&&card.status===200&&card.txt){
+    try{
+      const j=JSON.parse(card.txt);
+      cardMiss=AGENTCARD_KEYS.filter(k=>j[k]==null);
+      l4+=Math.round(3*(1-cardMiss.length/AGENTCARD_KEYS.length));
+    }catch(e){cardMiss=["JSON 解析失败"];}
+  }
+  G(3).s=Math.min(35,l4);
+
+  if(!probed){
+    add("medium",4,"无法探测后端接口",
+      u(["当前为离线模式（上传文件 / 粘贴源码），未对源站发起端点探测"]),
+      "MCP、A2A、OpenAPI 是否存在，只能探测源站得知。离线模式下 L4 得分不可用。",
+      "改用「输入网址抓取」模式重跑，即可探测全部约定端点。");
+  }else{
+    if(!mcpOk)add("critical",4,"未发现 MCP 端点",
+      u(["已探测 /.well-known/mcp.json、/mcp、/mcp/sse、/sse、/api/mcp，均不可用"]),
+      "MCP 是智能体与数据源的标准连接层。没有 MCP，外部 Agent 无法直接调用你的能力与数据。",
+      sig.mcp?"页面中出现了 MCP 相关字样，但端点未部署或不允许匿名访问。核对部署路径与鉴权策略。":"评估部署 MCP 服务，把产品查询、库存、报价等能力暴露为可调用工具。");
+    if(!a2aOk)add("critical",4,"未发现 A2A Agent Card",
+      u(["已探测 /.well-known/agent.json、/.well-known/agent-card.json，均不可用"]),
+      "Agent Card 是智能体之间的名片。没有它，别的 Agent 无法自主发现你的能力边界与调用方式。",
+      sig.a2a?"页面中出现了 A2A 相关字样，但 Agent Card 未按规范路径发布。核对路径与返回内容。":"按 A2A 规范在 /.well-known/agent.json 发布 Agent Card，含 name、url、version、capabilities、skills、authentication。");
+    if(!apiOk)add("high",4,"未发现 OpenAPI / Swagger 接口文档",
+      u(["已探测 /openapi.json、/swagger.json、/v3/api-docs 等，均不可用"]),
+      "没有机器可读的接口契约，Agent 只能猜接口。Function Calling 与 MCP 自动适配都依赖这份文档。",
+      "发布 OpenAPI 3.x 文档，覆盖查询、下单、库存、报价等 Agent 需要调用的接口。");
+    if(card&&card.status===200&&cardMiss.length)add("medium",4,"Agent Card 字段不完整",
+      u(["缺失字段："+cardMiss.join("、")]),
+      "字段缺失会让调用方无法确定能力、鉴权方式与输入输出格式，自动对接会失败。",
+      "补齐 A2A 规范要求的全部字段，尤其是 capabilities 与 authentication。");
+    if(card&&card.status===403)add("high",4,"Agent Card 存在但拒绝匿名访问",
+      u(["/.well-known/agent.json 返回 403"]),
+      "Agent Card 的设计目的就是被匿名发现。加鉴权会让它失去作用。",
+      "把 Agent Card 改为公开可读，把鉴权放在具体任务接口上，而不是名片上。");
+    if(mcpOk&&a2aOk&&apiOk)add("pass",4,"协议层三要素齐备",
+      u(["MCP 端点、Agent Card、接口文档均可用"]),
+      "—",
+      "维持现状。仍需真实 Agent 调用测试来验证可用性，规范存在不等于可被正确调用。");
+  }
+
+  const total=Math.max(0,Math.min(100,L.reduce((a,x)=>a+x.s,0)));
+  issues.sort((a,b)=>SEV_ORDER[a.sev]-SEV_ORDER[b.sev]||a.layer-b.layer);
+  return {
+    layers:L,total:total,grade:mtoGrade(total),issues:issues,
+    probes:probes.slice().sort((a,b)=>a.L-b.L),probed:probed,
+    signals:sig,certPages:certPages,stdPages:stdPages,validPages:validPages,freshPages:freshPages
+  };
+}
+
+/* ============ 渲染 ============ */
+let LAST=null;
+
+const MTO_LAYER_NAME={1:"L1 证据链",2:"L2 机器可读",3:"L3 信任量化",4:"L4 协议执行"};
+function probeLabel(st){
+  if(st===200)return {t:"可用",c:"var(--ok)"};
+  if(st===401||st===403)return {t:"存在 · 需授权",c:"var(--warn)"};
+  if(st===404||st===400||st===405)return {t:"未部署",c:"var(--dim2)"};
+  if(st===0)return {t:"无响应",c:"var(--dim2)"};
+  return {t:"HTTP "+st,c:"var(--dim2)"};
+}
+function renderMTO(m){
+  let h='<div class="sec"><div class="sec-t"><h2>MTO · 机器信任诊断</h2><span>只输出诊断与建议，不含修复代码</span></div>';
+  h+='<div class="card pad"><div class="fb" style="line-height:1.9">'+
+     '<b>GEO 与 MTO 是递进双层，不是替代关系。</b>GEO 解决「被 AI 看见」，终点是让 AI 愿意推荐你；'+
+     'MTO 解决「被机器信任」，终点是让机器敢直接买你。资产是同一套：GEO 用它做引用，MTO 用它做核验。'+
+     '跳过 GEO 做 MTO 不成立——机器连你都检索不到，无从谈信任。</div>'+
+     '<div class="row mt10"><span class="pill hit">L1 证据链 '+m.layers[0].s+"/"+m.layers[0].max+'</span>'+
+     '<span class="pill hit">L2 机器可读 '+m.layers[1].s+"/"+m.layers[1].max+'</span>'+
+     '<span class="pill hit">L3 信任量化 '+m.layers[2].s+"/"+m.layers[2].max+'</span>'+
+     '<span class="pill hit">L4 协议执行 '+m.layers[3].s+"/"+m.layers[3].max+'</span></div></div>';
+
+  // 端点探测
+  if(m.probes&&m.probes.length){
+    h+='<div class="sec-t" style="margin-top:22px"><h3>约定端点探测</h3><span>共 '+m.probes.length+' 个路径 · 200 视为可用，401/403 视为存在但需授权</span></div>'+
+       '<div class="tbl-wrap"><table><thead><tr><th>路径</th><th>用途</th><th>层</th><th>状态</th><th>判定</th></tr></thead><tbody>';
+    m.probes.forEach(p=>{
+      const lb=probeLabel(p.status);
+      h+='<tr><td class="mono ev">'+esc(p.p)+'</td><td>'+esc(p.n)+(p.d?'<div style="color:var(--dim2);font-size:11.5px">'+esc(p.d)+"</div>":"")+'</td>'+
+         '<td class="mono" style="color:var(--dim2)">'+MTO_LAYER_NAME[p.L]+'</td>'+
+         '<td class="mono">'+(p.status||"—")+'</td>'+
+         '<td style="color:'+lb.c+'">'+lb.t+(p.note?' <span style="color:var(--dim2)">('+esc(p.note)+")</span>":"")+'</td></tr>';
+    });
+    h+="</tbody></table></div>";
+  }else{
+    h+='<div class="sec-t" style="margin-top:22px"><h3>约定端点探测</h3><span>本次未探测</span></div>'+
+       '<div class="card pad"><div class="fb">当前为离线模式（上传文件 / 粘贴源码），未对源站发起端点探测。'+
+       'MCP、A2A、OpenAPI 是否存在必须探测源站才能判定。改用「输入网址抓取」模式重跑即可。</div></div>';
+  }
+
+  // 四层问题与建议
+  h+='<div class="sec-t" style="margin-top:22px"><h3>四层诊断与建议</h3><span>按对机器核验的影响程度排序</span></div>';
+  [4,1,2,3].forEach(L=>{
+    const items=m.issues.filter(i=>i.layer===L);
+    const layer=m.layers.find(x=>x.k===L);
+    h+='<div class="step"><div class="step-h"><span class="idx">L'+L+'</span><span class="ttl">'+esc(layer.name)+' · '+esc(layer.d)+'</span>'+
+       '<span class="sc">'+layer.s+"/"+layer.max+'</span><span class="cv">&#9656;</span></div><div class="step-b">';
+    if(!items.length){
+      h+='<div class="sub"><div class="fb" style="color:var(--ok)">本层未检测到问题。</div></div>';
+    }else{
+      items.forEach(i=>{
+        h+='<div class="finding '+i.sev+'"><div class="ft">'+esc(i.title)+' <span class="sev '+i.sev+'">'+SEV_LABEL[i.sev]+'</span></div>'+
+           '<div class="fb"><b>影响：</b>'+esc(i.impact)+
+           (i.advice&&i.advice!=="—"?'<br><b>建议：</b>'+esc(i.advice):"")+
+           ((i.evidence&&i.evidence.length)?'<br><b>证据：</b><span class="mono" style="color:var(--dim2)">'+esc(i.evidence.slice(0,2).join(" | "))+"</span>":"")+"</div></div>";
+      });
+    }
+    h+="</div></div>";
+  });
+
+  h+='<div class="card pad mt16"><div class="fb" style="color:var(--dim);line-height:1.85">'+
+     '<b>成熟度声明：</b>MTO 目前仍处于理论推演阶段，机器自主交易尚未大规模发生。'+
+     'L3 信任量化层的指标属实验性设计，未经真实交易场景验证。'+
+     '本页所有 MTO 结果仅用于技术诊断，不构成任何商业决策依据，也不应用于对外商业承诺。</div></div>';
+  h+="</div>";
+  return h;
+}
+function grade(t){
+  if(t>=80)return {l:"AI 就绪",c:"var(--ok)"};
+  if(t>=60)return {l:"基本可用，需补关键项",c:"var(--acc2)"};
+  if(t>=40)return {l:"有引用风险",c:"var(--warn)"};
+  if(t>=20)return {l:"AI 基本抽不走",c:"var(--high)"};
+  return {l:"AI 不可见",c:"var(--crit)"};
+}
+function radarSVG(steps){
+  const n=steps.length,cx=105,cy=100,R=72;
+  const pt=(i,r)=>{const a=-Math.PI/2+i*2*Math.PI/n;return [cx+Math.cos(a)*r,cy+Math.sin(a)*r];};
+  const poly=r=>steps.map((s,i)=>pt(i,r).map(v=>v.toFixed(1)).join(",")).join(" ");
+  const data=steps.map((s,i)=>pt(i,R*Math.max(.06,s.score/s.max)).map(v=>v.toFixed(1)).join(",")).join(" ");
+  let g="";
+  [.25,.5,.75,1].forEach(f=>{g+='<polygon points="'+poly(R*f)+'" fill="none" stroke="#232b3a" stroke-width="1"/>';});
+  steps.forEach((s,i)=>{const p=pt(i,R);g+='<line x1="'+cx+'" y1="'+cy+'" x2="'+p[0].toFixed(1)+'" y2="'+p[1].toFixed(1)+'" stroke="#232b3a"/>';});
+  const labels=steps.map((s,i)=>{const p=pt(i,R+18);
+    const an=p[0]>cx+4?"start":(p[0]<cx-4?"end":"middle");
+    return '<text x="'+p[0].toFixed(1)+'" y="'+(p[1]+4).toFixed(1)+'" text-anchor="'+an+'" fill="#8994a7" font-size="10">'+esc(s.name)+'</text>';}).join("");
+  const dots=steps.map((s,i)=>{const p=pt(i,R*Math.max(.06,s.score/s.max));return '<circle cx="'+p[0].toFixed(1)+'" cy="'+p[1].toFixed(1)+'" r="2.5" fill="#4da3ff"/>';}).join("");
+  return '<svg viewBox="0 0 210 210" width="100%" height="200" xmlns="http://www.w3.org/2000/svg">'+g+
+    '<polygon points="'+data+'" fill="rgba(77,163,255,.22)" stroke="#4da3ff" stroke-width="1.6"/>'+dots+labels+'</svg>';
+}
+function render(res,domainLabel){
+  LAST=res;
+  const g=grade(res.total);
+  const sevCount={critical:0,high:0,medium:0,low:0};
+  res.issues.forEach(i=>sevCount[i.sev]++);
+  const host=domainLabel;
+  const sv=sampleVals(res.pages);
+
+  let h="";
+  h+='<div class="card pad"><div class="summary"><div class="gauge">'+
+     '<div class="v" style="color:'+g.c+'">'+res.total+'</div>'+
+     '<div class="l">AI 搜索适配总分 / 100</div>'+
+     '<div class="badge" style="color:'+g.c+';border-color:'+g.c+'">'+g.l+'</div></div>'+
+     '<div class="bars">'+res.steps.map(s=>{
+       const pct=Math.round(s.score/s.max*100);
+       const c=pct>=80?"var(--ok)":pct>=55?"var(--acc)":pct>=30?"var(--warn)":"var(--crit)";
+       return '<div class="bar-row"><span class="nm">'+esc(s.name)+'</span><span class="bar-tr"><span class="bar-fi" style="width:'+pct+'%;background:'+c+'"></span></span><span class="sc" style="color:'+c+'">'+s.score+"/"+s.max+"</span></div>";
+     }).join("")+
+     '<div class="row" style="margin-top:6px"><span class="pill miss">致命 '+sevCount.critical+'</span><span class="pill" style="background:#3a2413;color:#ffab84;border-color:#4a3020">严重 '+sevCount.high+'</span><span class="pill" style="background:#332a12;color:#f4c86a;border-color:#45381a">中等 '+sevCount.medium+'</span><span class="pill hit">轻微 '+sevCount.low+'</span></div>'+
+     '</div></div>'+
+     '<div class="row mt16"><button class="btn-s btn-sm" id="dl">下载 Markdown 报告</button>'+
+     '<button class="btn-s btn-sm" id="copy-all">复制全部 Codex 提示词</button>'+
+     '<span class="muted">扫描页面 '+res.pages.length+' 个 · '+new Date().toLocaleString("zh-CN")+'</span></div></div>';
+
+  // MTO 总分卡
+  if(res.mto){
+    const m=res.mto,mg=m.grade;
+    const mSev={critical:0,high:0,medium:0,low:0,pass:0};
+    m.issues.forEach(i=>mSev[i.sev]++);
+    h+='<div class="card pad"><div class="summary"><div class="gauge">'+
+       '<div class="v" style="color:'+mg.c+'">'+m.total+'</div>'+
+       '<div class="l">MTO 机器信任总分 / 100</div>'+
+       '<div class="badge" style="color:'+mg.c+';border-color:'+mg.c+'">'+mg.l+'</div></div>'+
+       '<div class="bars">'+m.layers.map(x=>{
+         const pct=Math.round(x.s/x.max*100);
+         const c=pct>=75?"var(--ok)":pct>=50?"var(--acc)":pct>=25?"var(--warn)":"var(--crit)";
+         return '<div class="bar-row"><span class="nm">'+esc(x.name)+'</span><span class="bar-tr"><span class="bar-fi" style="width:'+pct+'%;background:'+c+'"></span></span><span class="sc" style="color:'+c+'">'+x.s+"/"+x.max+"</span></div>";
+       }).join("")+
+       '<div class="row" style="margin-top:6px"><span class="pill miss">致命 '+mSev.critical+'</span><span class="pill" style="background:#3a2413;color:#ffab84;border-color:#4a3020">严重 '+mSev.high+'</span><span class="pill" style="background:#332a12;color:#f4c86a;border-color:#45381a">中等 '+mSev.medium+'</span><span class="pill hit">通过 '+mSev.pass+'</span></div>'+
+       '</div></div>'+
+       '<div class="row mt16"><span class="muted">'+(m.probed?"已探测 "+m.probes.length+" 个约定端点":"未探测端点（示例站点或离线模式），L4 得分不可用")+' · MTO 目前处于理论推演阶段，本结果不构成商业决策依据</span></div></div>';
+  }
+
+  // 问题清单
+  h+='<div class="sec"><div class="sec-t"><h2>问题清单</h2><span>按对 AI 引用的影响程度排序</span></div><div class="tbl-wrap"><table><thead><tr>'+
+     '<th>级别</th><th>步骤</th><th>问题</th><th>影响页面</th><th>证据</th><th>为什么影响 AI 引用</th><th>修复动作</th></tr></thead><tbody>';
+  if(!res.issues.length)h+='<tr><td colspan="7" style="color:var(--ok)">未检测到问题。</td></tr>';
+  res.issues.forEach(i=>{
+    h+='<tr><td><span class="sev '+i.sev+'">'+SEV_LABEL[i.sev]+'</span></td>'+
+       '<td class="mono" style="color:var(--dim2)">S'+i.step+'</td>'+
+       '<td style="font-weight:600">'+esc(i.title)+'</td>'+
+       '<td class="mono" style="font-size:12px;color:var(--dim)">'+i.pages.length+' 页</td>'+
+       '<td class="ev">'+esc((i.evidence||[]).slice(0,2).join(" | "))+'</td>'+
+       '<td style="color:var(--dim);max-width:330px">'+esc(i.impact)+'</td>'+
+       '<td style="max-width:300px">'+esc(i.fix)+'</td></tr>';
+  });
+  h+="</tbody></table></div></div>";
+
+  // 逐页明细
+  h+='<div class="sec"><div class="sec-t"><h2>逐页明细</h2><span>共 '+res.pages.length+' 页</span></div><div class="tbl-wrap"><table><thead><tr>'+
+     '<th>页面</th><th>H1</th><th>JSON-LD</th><th>答案密度</th><th>实体数</th><th>文本/HTML</th><th>命中问题</th></tr></thead><tbody>';
+  res.pages.forEach(p=>{
+    const f=res.perPage.find(x=>x.url===p.url)||{flags:[]};
+    const bad=p.ld.filter(b=>!b.ok).length;
+    h+='<tr><td class="ev" style="max-width:220px">'+esc(p.url)+'</td>'+
+      '<td class="mono">'+(p.h1.length||0)+'</td>'+
+      '<td class="mono">'+p.ld.length+' 块'+(bad?' <span style="color:var(--crit)">('+bad+' 错误)</span>':'')+'</td>'+
+      '<td class="mono">'+(p.answerDensity.ratio*100).toFixed(0)+'%</td>'+
+      '<td class="mono">'+p.entities.length+'</td>'+
+      '<td class="mono">'+p.textRatio+'</td>'+
+      '<td style="max-width:260px">'+f.flags.slice(0,6).map(x=>'<span class="tag">'+esc(x)+"</span>").join(" ")+'</td></tr>';
+  });
+  h+="</tbody></table></div></div>";
+
+  // 五步
+  h+='<div class="sec"><div class="sec-t"><h2>五步修复方案</h2><span>每步含问题、修复建议、Codex 提示词</span></div>';
+  const STEP_TITLE=["第一步 · 扫代码层漏洞","第二步 · 批量补 Schema","第三步 · 改内容结构","第四步 · 铺实体与独立问答页","第五步 · 跨平台信源对齐 + AI 引用验证"];
+  for(let k=1;k<=5;k++){
+    const st=res.steps[k-1];
+    const items=res.issues.filter(i=>i.step===k);
+    const pct=Math.round(st.score/st.max*100);
+    const c=pct>=80?"var(--ok)":pct>=55?"var(--acc)":pct>=30?"var(--warn)":"var(--crit)";
+    h+='<div class="step"><div class="step-h"><span class="idx">0'+k+'</span><span class="ttl">'+STEP_TITLE[k-1]+'</span>'+
+       '<span class="sc" style="color:'+c+'">'+st.score+"/"+st.max+'</span><span class="cv">&#9656;</span></div><div class="step-b">';
+    if(k===1&&res.robots){
+      const blocked=Object.keys(res.robots.bots).filter(b=>res.robots.bots[b].blocked);
+      h+='<div class="sub"><h4>AI 爬虫可达性</h4><div>';
+      if(!blocked.length)h+='<span class="pill hit">全部主流 AI 爬虫未被屏蔽</span>';
+      else blocked.forEach(b=>h+='<span class="pill miss">'+esc(b)+' 被屏蔽 · '+esc(res.robots.bots[b].engine)+'</span>');
+      h+="</div></div>";
+    }
+    if(k===2){
+      const hits=SEVEN_LAYER.map(L=>{
+        const hit=res.pages.some(p=>p.nodes.some(nd=>getType(nd).some(t=>String(t).indexOf(L.t.split("/")[0])>=0)));
+        return '<span class="pill '+(hit?"hit":"miss")+'">'+esc(L.t)+(hit?" ✓":" ✗")+'</span>';
+      }).join("");
+      h+='<div class="sub"><h4>七层 Schema 覆盖</h4><div>'+hits+'</div></div>';
+    }
+    if(k===4){
+      const ents={};
+      res.pages.forEach(p=>p.entities.forEach(e=>ents[e]=(ents[e]||0)+1));
+      const top=Object.keys(ents).sort((a,b)=>ents[b]-ents[a]).slice(0,20);
+      h+='<div class="sub"><h4>已识别实体（可作为问答页选题）</h4>'+
+         '<div class="muted" style="margin-bottom:8px">全站去重实体 '+res.entTotal+' 个'+(top.length?"。以下为高频实体：":"。实体过少，无法支撑问答页选题。")+'</div>'+
+         '<div>'+(top.length?top.map(e=>'<span class="pill">'+esc(e)+"</span>").join(""):"")+'</div></div>';
+      h+='<div class="sub"><h4>建议新建的问答页</h4><div class="kv">'+top.slice(0,8).map(e=>'<dt>/faq/'+esc(e.replace(/[^\w\u4e00-\u9fa5]+/g,"-"))+'</dt><dd>「'+esc(e)+'」相关问题的独立问答页，一问一答 + FAQPage Schema</dd>').join("")+'</div></div>';
+    }
+    if(k===5){
+      h+='<div class="sub"><h4>规格口径核对清单</h4><div class="kv">';
+      if(res.conflicts.length){
+        res.conflicts.forEach(c2=>{
+          h+='<dt style="color:var(--crit)">页内冲突 · '+esc(c2.unit)+'</dt><dd>'+c2.variants.map(v=>esc(v.v+c2.unit)).join(" / ")+
+             ' —— 同一页面自相矛盾，必须立即统一。页面：'+esc(c2.pages[0])+'</dd>';
+        });
+      }
+      if(res.divergences.length){
+        res.divergences.forEach(c2=>{
+          h+='<dt style="color:var(--warn)">跨页差异 · '+esc(c2.unit)+'</dt><dd>'+c2.variants.map(v=>esc(v.v+c2.unit)).join(" / ")+
+             ' —— 确认是否为同一参数。涉及页面：'+esc(c2.pages.join("、"))+'</dd>';
+        });
+      }
+      if(!res.conflicts.length&&!res.divergences.length){
+        h+='<dt>—</dt><dd>站内未检测到数值冲突。仍需人工核对 Amazon / 目录站 / 社媒上的同一参数。</dd>';
+      }
+      h+="</div></div>";
+      const certs={};
+      res.pages.forEach(p=>p.certs.forEach(c3=>certs[c3]=(certs[c3]||0)+1));
+      const ck=Object.keys(certs);
+      h+='<div class="sub"><h4>页面已输出的认证编号</h4><div>'+(ck.length?ck.map(c3=>'<span class="pill hit">'+esc(c3)+"</span>").join(""):'<span class="pill miss">正文未检测到认证编号</span>')+"</div></div>";
+    }
+    if(items.length){
+      h+='<div class="sub"><h4>本步问题</h4>';
+      items.forEach(i=>{
+        h+='<div class="finding '+i.sev+'"><div class="ft">'+esc(i.title)+' <span class="sev '+i.sev+'">'+SEV_LABEL[i.sev]+'</span></div>'+
+           '<div class="fb"><b>影响：</b>'+esc(i.impact)+'<br><b>修复：</b>'+esc(i.fix)+
+           ((i.evidence&&i.evidence.length)?'<br><b>证据：</b><span class="mono" style="color:var(--dim2)">'+esc(i.evidence.slice(0,2).join(" | "))+"</span>":"")+"</div></div>";
+      });
+      h+="</div>";
+    }else h+='<div class="sub"><div class="fb" style="color:var(--ok)">本步未检测到问题。</div></div>';
+    const ctx=items.map(i=>i.title).slice(0,6).join("；")||"本步无问题";
+    const prompt=codexPrompt(k,host,ctx);
+    h+='<div class="sub"><h4>Codex 提示词 · 可直接复制</h4><div class="prompt-box" id="cp-'+k+'">'+esc(prompt)+'</div>'+
+       '<div class="row mt10"><button class="btn-s btn-sm copy-p" data-k="'+k+'">复制提示词</button></div></div>';
+    if(k===2){
+      h+='<div class="sub"><h4>修复代码</h4><div class="tabs">'+
+         '<button class="btn-s btn-sm tab on" data-t="json">静态 JSON-LD</button>'+
+         '<button class="btn-s btn-sm tab" data-t="liquid">Shopify Liquid</button></div>'+
+         '<div class="pre" id="tab-json"><div class="ph"><span>七层 Schema · 静态示例</span><span class="pa"><button class="btn-s btn-sm" data-copy="json">复制</button><button class="btn-s btn-sm" data-dl="json">下载</button></span></div><pre><code id="code-json">'+esc(genJsonLd(sv))+"</code></pre></div>"+
+         '<div class="pre hidden" id="tab-liquid"><div class="ph"><span>七层 Schema · Liquid 模板</span><span class="pa"><button class="btn-s btn-sm" data-copy="liquid">复制</button><button class="btn-s btn-sm" data-dl="liquid">下载</button></span></div><pre><code id="code-liquid">'+esc(genLiquid(sv))+"</code></pre></div>"+
+         '<div class="hint">字段值为「待补充」的键，改完模板后必须回写真实数据。输出空字符串比缺失更糟。</div></div>';
+    }
+    h+="</div></div>";
+  }
+  h+="</div>";
+
+  // MTO 诊断区块
+  if(res.mto)h+=renderMTO(res.mto);
+
+  $("#report").innerHTML=h;
+  $("#report").classList.remove("hidden");
+
+  $$("#report .step-h").forEach(el=>el.addEventListener("click",()=>el.parentElement.classList.toggle("open")));
+  $("#report .step").classList.add("open");
+  $$("#report .copy-p").forEach(b=>b.addEventListener("click",()=>{
+    const k=b.dataset.k; copy($("#cp-"+k).textContent,b);
+  }));
+  $$("#report .tab").forEach(b=>b.addEventListener("click",()=>{
+    $$("#report .tab").forEach(x=>x.classList.remove("on")); b.classList.add("on");
+    const t=b.dataset.t;
+    $("#tab-json").classList.toggle("hidden",t!=="json");
+    $("#tab-liquid").classList.toggle("hidden",t!=="liquid");
+  }));
+  $$("#report [data-copy]").forEach(b=>b.addEventListener("click",()=>{
+    const t=b.dataset.copy; copy($("#code-"+t).textContent,b);
+  }));
+  $$("#report [data-dl]").forEach(b=>b.addEventListener("click",()=>{
+    const t=b.dataset.dl;
+    dl((t==="json"?"schema.jsonld":"schema.liquid"),$("#code-"+t).textContent,t==="json"?"application/ld+json":"text/plain");
+  }));
+  $("#dl").addEventListener("click",()=>{
+    dl("AI搜索适配诊断报告-"+host.replace(/[^a-z0-9\.\-]/gi,"")+".md",toMarkdown(res,host),"text/markdown");
+  });
+  $("#copy-all").addEventListener("click",e=>{
+    let t="# AI 搜索适配优化 · 五步 Codex 提示词\n\n站点："+host+"\n\n";
+    for(let k=1;k<=5;k++){t+="## 第 "+k+" 步\n\n"+codexPrompt(k,host,(res.issues.filter(i=>i.step===k).map(i=>i.title).slice(0,6).join("；")||"无"))+"\n\n---\n\n";}
+    copy(t,e.target);
+  });
+  $("#report").scrollIntoView({behavior:"smooth",block:"start"});
+}
+function copy(txt,btn){
+  const done=()=>{if(btn){const o=btn.textContent;btn.textContent="已复制";setTimeout(()=>btn.textContent=o,1400);}};
+  if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(txt).then(done,()=>{fallback();});
+  else fallback();
+  function fallback(){const ta=document.createElement("textarea");ta.value=txt;document.body.appendChild(ta);ta.select();try{document.execCommand("copy");done();}catch(e){}ta.remove();}
+}
+function dl(name,txt,type){
+  const b=new Blob([txt],{type:(type||"text/plain")+";charset=utf-8"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download=name;a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),3000);
+}
+function toMarkdown(res,host){
+  const g=grade(res.total);
+  let m="";
+  m+="# AI 搜索适配诊断报告\n\n";
+  m+="- 站点："+host+"\n- 扫描页面："+res.pages.length+"\n- 总分："+res.total+" / 100（"+g.l+"）\n- 时间："+new Date().toLocaleString("zh-CN")+"\n\n";
+  m+="## 分项得分\n\n| 步骤 | 得分 | 满分 | 完成度 |\n|---|---|---|---|\n";
+  res.steps.forEach(s=>{m+="| "+s.name+" | "+s.score+" | "+s.max+" | "+Math.round(s.score/s.max*100)+"% |\n";});
+  m+="\n## 问题清单（按对 AI 引用的影响程度排序）\n\n| 级别 | 步骤 | 问题 | 影响页面 | 为什么影响 AI 引用 | 修复动作 |\n|---|---|---|---|---|---|\n";
+  res.issues.forEach(i=>{
+    m+="| "+SEV_LABEL[i.sev]+" | S"+i.step+" | "+i.title.replace(/\|/g,"/")+" | "+i.pages.length+" | "+i.impact.replace(/\|/g,"/")+" | "+i.fix.replace(/\|/g,"/")+" |\n";
+  });
+  m+="\n## 逐页明细\n\n| 页面 | H1 | JSON-LD | 答案密度 | 实体数 | 文本/HTML |\n|---|---|---|---|---|---|\n";
+  res.pages.forEach(p=>{
+    const bad=p.ld.filter(b=>!b.ok).length;
+    m+="| "+p.url.replace(/\|/g,"/")+" | "+p.h1.length+" | "+p.ld.length+" 块"+(bad?"（"+bad+" 错误）":"")+" | "+(p.answerDensity.ratio*100).toFixed(0)+"% | "+p.entities.length+" | "+p.textRatio+" |\n";
+  });
+  if(res.conflicts.length||res.divergences.length){
+    m+="\n## 规格口径核对\n\n";
+    res.conflicts.forEach(c=>{m+="- [页内冲突] "+c.unit+"："+c.variants.map(v=>v.v+c.unit).join(" / ")+"（"+c.pages[0]+"）\n";});
+    res.divergences.forEach(c=>{m+="- [跨页差异] "+c.unit+"："+c.variants.map(v=>v.v+c.unit).join(" / ")+"（"+c.pages.join("、")+"）\n";});
+  }
+  m+="\n## 五步 Codex 提示词\n\n";
+  for(let k=1;k<=5;k++){
+    m+="### 第 "+k+" 步\n\n```\n"+codexPrompt(k,host,res.issues.filter(i=>i.step===k).map(i=>i.title).slice(0,6).join("；")||"无")+"\n```\n\n";
+  }
+  m+="## 七层 Schema JSON-LD\n\n```json\n"+genJsonLd(sampleVals(res.pages)).replace(/<\/?script[^>]*>/g,"").trim()+"\n```\n\n";
+  m+="## Shopify Liquid 模板\n\n```liquid\n"+genLiquid(sampleVals(res.pages))+"\n```\n\n";
+
+  if(res.mto){
+    const m2=res.mto;
+    m+="---\n\n# MTO · 机器信任诊断\n\n";
+    m+="- MTO 总分："+m2.total+" / 100（"+m2.grade.l+"）\n";
+    m+="- 端点探测："+(m2.probed?("已探测 "+m2.probes.length+" 个约定路径"):"离线模式未探测，L4 得分不可用")+"\n\n";
+    m+="GEO 与 MTO 是递进双层。GEO 解决「被 AI 看见」，MTO 解决「被机器信任」。资产同一套，一次治理两层受益。\n\n";
+    m+="## MTO 四层得分\n\n| 层 | 得分 | 满分 | 说明 |\n|---|---|---|---|\n";
+    m2.layers.forEach(x=>{m+="| "+x.name+" | "+x.s+" | "+x.max+" | "+x.d+" |\n";});
+    if(m2.probes&&m2.probes.length){
+      m+="\n## 约定端点探测\n\n| 路径 | 用途 | 层 | HTTP | 判定 |\n|---|---|---|---|---|\n";
+      m2.probes.forEach(p=>{m+="| "+p.p+" | "+p.n+" | L"+p.L+" | "+(p.status||"—")+" | "+probeLabel(p.status).t+" |\n";});
+    }
+    m+="\n## MTO 诊断与建议\n\n| 级别 | 层 | 问题 | 影响 | 建议 |\n|---|---|---|---|---|\n";
+    m2.issues.forEach(i=>{
+      m+="| "+SEV_LABEL[i.sev]+" | "+MTO_LAYER_NAME[i.layer]+" | "+i.title.replace(/\|/g,"/")+" | "+
+         i.impact.replace(/\|/g,"/")+" | "+(i.advice||"—").replace(/\|/g,"/")+" |\n";
+    });
+    m+="\n> MTO 目前处于理论推演阶段，L3 信任量化层指标属实验性设计，未经真实交易场景验证。本结果不构成商业决策依据。\n";
+  }
+
+  m+="\n---\n\n第五步的跨平台引用验证需人工或外部数据确认。本报告只输出核对清单，不生成未经核实的第三方结论。\n";
+  m+="MTO 部分只输出诊断与建议，不含任何修复代码。\n";
+  return m;
+}
+
+/* ============ 数据源 ============ */
+const SOURCES=[]; // {html, url}
+let ROBOTS_TXT=null;
+let LLMS_TXT=null;
+let DEMO_MODE=false;
+
+function fileToUrl(name){
+  let u=name.replace(/\.(html?|txt)$/i,"");
+  u=u.replace(/[\\]/g,"/");
+  if(/^https?:/i.test(u))return u;
+  u=u.replace(/^[_\-]+/,"").replace(/^www\./,"");
+  return "https://"+u.replace(/^[_\-\.]+/,"")+"/";
+}
+async function readFiles(list){
+  for(const f of list){
+    const txt=await f.text();
+    if(/^robots\.txt$/i.test(f.name)){ROBOTS_TXT=txt;log("读取 robots.txt（"+txt.length+" 字节）","ok");continue;}
+    if(/robots/i.test(f.name)&&!/<html|<body|<!doctype/i.test(txt)){ROBOTS_TXT=txt;log("读取 robots.txt（"+txt.length+" 字节）","ok");continue;}
+    const url=fileToUrl(f.name);
+    SOURCES.push({html:txt,url:url});
+    log("载入页面 "+url+"（"+Math.round(txt.length/1024)+" KB）","ok");
+  }
+  updateReady();
+}
+function updateReady(){
+  $("#ready").textContent=SOURCES.length?("已载入 "+SOURCES.length+" 个页面"+(ROBOTS_TXT?" · 含 robots.txt":"")):"";
+  $("#run").disabled=!SOURCES.length;
+}
+async function runFetch(){
+  const raw=$("#url").value.trim(); if(!raw)return;
+  let base=raw; if(!/^https?:\/\//i.test(base))base="https://"+base;
+  const depth=+$("#depth").value;
+  const proxy=$("#proxy").value.trim();
+  $("#go").disabled=true; log("开始抓取 "+base,"hl");
+  const home=await fetchText(base,proxy);
+  if(!home.ok){
+    log("抓取失败：" +home.err+"。浏览器跨域限制导致。请改用上传文件或粘贴源码模式。","err");
+    $("#go").disabled=false;
+    switchMode("upload");
+    return;
+  }
+  log("首页抓取成功（"+Math.round(home.txt.length/1024)+" KB，通道："+home.via+"）","ok");
+  SOURCES.push({html:home.txt,url:base});
+  const rb=await fetchText(base.replace(/\/$/,"")+"/robots.txt",proxy);
+  if(rb.ok&&/user-agent/i.test(rb.txt)){ROBOTS_TXT=rb.txt;log("读取 robots.txt 成功","ok");}
+  else log("未取到 robots.txt，跳过第 1 步爬虫可达性检测","wn");
+  const lb=await fetchText(base.replace(/\/$/,"")+"/llms.txt",proxy);
+  LLMS_TXT=!!(lb.ok&&lb.txt.length>50&&!/^\s*<(?:!doctype|html)/i.test(lb.txt));
+  log(LLMS_TXT?"检测到 llms.txt":"未检测到 llms.txt（加分项，非必需）",LLMS_TXT?"ok":"wn");
+  if(depth>1){
+    const links=sameOriginLinks(home.txt,base,depth);
+    log("发现内链 "+links.length+" 个，取前 "+Math.min(depth-1,links.length)+" 个","hl");
+    const targets=links.slice(0,depth-1);
+    for(let i=0;i<targets.length;i++){
+      const r=await fetchText(targets[i],proxy);
+      if(r.ok){SOURCES.push({html:r.txt,url:targets[i]});log("["+(i+1)+"/"+targets.length+"] "+targets[i],"ok");}
+      else log("["+(i+1)+"/"+targets.length+"] 失败 "+targets[i],"wn");
+      await new Promise(s=>setTimeout(s,300));
+    }
+  }
+  $("#go").disabled=false;
+  updateReady();
+  log("抓取完成，共 "+SOURCES.length+" 页。点击「生成诊断报告」。","hl");
+}
+async function runAudit(){
+  if(!SOURCES.length)return;
+  const btn=$("#run"); if(btn)btn.disabled=true;
+  log("开始解析 "+SOURCES.length+" 个页面","hl");
+  const pages=SOURCES.map((s,i)=>{const p=parsePage(s.html,s.url);p.isHome=(i===0);return p;});
+  const robots=ROBOTS_TXT?parseRobots(ROBOTS_TXT):null;
+  if(robots){
+    const blocked=Object.keys(robots.bots).filter(b=>robots.bots[b].blocked);
+    log(blocked.length?("robots.txt 屏蔽了 "+blocked.length+" 个 AI 爬虫："+blocked.join(", ")):"robots.txt 未屏蔽主流 AI 爬虫",blocked.length?"err":"ok");
+  }
+  const bad=pages.reduce((a,p)=>a+p.ld.filter(b=>!b.ok).length,0);
+  log("JSON-LD 语法错误 "+bad+" 处",bad?"err":"ok");
+
+  // MTO 端点探测：仅在线模式下进行
+  let probes=[];
+  let base="";
+  try{const uu=new URL(SOURCES[0].url);base=uu.origin;}catch(e){base="";}
+  const offline=(location.protocol==="file:"||!base||/\.local(:|$)/.test(base)||DEMO_MODE);
+  if(offline){
+    log(DEMO_MODE?"示例站点为虚构域名：跳过 MTO 端点探测，L4 仅按页面静态声明判定":"离线模式：跳过 MTO 端点探测，L4 协议层得分不可用","wn");
+  }else{
+    const proxy=$("#proxy")?$("#proxy").value.trim():"";
+    log("探测 MTO 约定端点（MCP / A2A / 接口文档，共 "+MTO_PROBES.length+" 个）","hl");
+    probes=await probeMTO(base,proxy);
+    const live=probes.filter(p=>p.status===200||p.status===401||p.status===403).length;
+    log("端点探测完成，可用 "+live+" 个 / 共 "+probes.length+" 个",live?"ok":"wn");
+  }
+
+  const res=audit(pages,robots,LLMS_TXT,probes);
+  log("诊断完成。GEO 总分 "+res.total+"/100 · MTO 总分 "+res.mto.total+"/100","hl");
+  let host=""; try{host=new URL(SOURCES[0].url).hostname;}catch(e){host=SOURCES[0].url;}
+  render(res,host);
+  $("#reset").classList.remove("hidden");
+  if(btn)btn.disabled=false;
+}
+
+/* ============ Demo ============ */
+function demoSite(kind){
+  const base={pump:"https://www.industrial-pump-demo.com",storage:"https://www.ess-storage-demo.com",lock:"https://www.smartlock-demo.com"}[kind];
+  const out=[];
+  const shell=(title,body,ld,url)=>'<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8"><title>'+title+'</title>'+
+    '<meta name="description" content="'+((ld&&ld.desc)||title)+'"><link rel="canonical" href="'+url+'"></head><body>'+
+    '<header><nav><a href="/">首页</a><a href="/products">产品</a><a href="/about">关于</a></nav></header>'+
+    '<main>'+body+'</main><footer><p>&copy; 2026 '+title+'</p></footer>'+(ld?ld.code:"")+'</body></html>';
+
+  if(kind==="pump"){
+    // 首页：Organization 有，无 Product
+    out.push({url:base+"/",html:shell("工业泵 · 离心泵与化工泵制造商","<h1>工业泵制造商</h1><h2>关于我们</h2><p>我们成立于1998年，致力于为客户提供最优质的流体输送解决方案。多年来我们始终坚持品质第一、客户至上的理念，赢得了广泛的市场认可与良好的行业口碑。</p><p>我们的产品广泛应用于化工、石油、制药、电力等行业。</p><p>本站已部署 MCP 服务并发布 A2A Agent Card，供 AI 智能体自主调用产品查询与报价接口。</p>",{code:'<script type="application/ld+json">{"@context":"https://schema.org","@type":"Organization","name":"PumpCo","url":"'+base+'/","logo":"'+base+'/logo.png"}<\/script>'},base+"/")});
+    // 产品页：gtin 缺、offers 不完整、FAQ JSON-LD 尾部逗号语法错误
+    out.push({url:base+"/products/chemical-pump-cx200",html:shell("CX200 化工离心泵 · 工业泵","<h1>CX200 化工离心泵</h1><p>我们深耕流体输送领域二十余年，CX200 系列凝聚了我们对品质的执着追求。每一台泵都经过严格检测，只为交付让您安心的产品。</p><h2>应用场景</h2><p>适用于化工、石油、制药行业的腐蚀性介质输送。</p><h2>技术参数</h2><p>流量范围为每小时若干立方米，扬程可达数十米，材质可选不锈钢与铸铁。</p><p>本产品通过 ATEX Zone 1 认证，证书编号 ATEX-2024-8891，签发机构 TUV Rheinland，有效期至 2028-05-30，测试依据 ISO 9906。</p><img src=\"/img/1.jpg\"><img src=\"/img/2.jpg\" alt=\"CX200\">",
+      {code:'<script type="application/ld+json">\n{\n "@context":"https://schema.org",\n "@type":"Product",\n "name":"CX200 化工离心泵",\n "sku":"CX200",\n "brand":{"@type":"Brand","name":"PumpCo"},\n "description":"化工离心泵",\n "offers":{"@type":"Offer","price":"1280"},\n}\n<\/script>\n<script type="application/ld+json">\n{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[\n {"@type":"Question","name":"CX200 适用哪些介质？","acceptedAnswer":{"@type":"Answer","text":""}},\n {"@type":"Question","name":"防护等级是多少？"}\n]}\n<\/script>'},base+"/products/chemical-pump-cx200")});
+    // 第二个产品页：证书写在 metafield 但前端空，续航天差地别
+    out.push({url:base+"/products/slurry-pump-sx80",html:shell("SX80 渣浆泵 · 工业泵","<h1>SX80 渣浆泵</h1><p>本产品通过 ATEX Zone 1 认证。</p><p>我们的渣浆泵在矿山与冶金行业有着广泛的应用。</p><meta name=\"certification\" content=\"\"><span data-metafield=\"custom.certification\"></span>",{code:'<script type="application/ld+json">{"@context":"https://schema.org","@type":"Product","name":"SX80 渣浆泵","sku":"SX80","brand":{"@type":"Brand","name":"PumpCo"},"description":"","image":"","offers":{"@type":"Offer","price":"","priceCurrency":"","availability":""},"gtin13":""}<\/script>'},base+"/products/slurry-pump-sx80")});
+    out.push({url:base+"/robots.txt",html:"User-agent: *\nDisallow: /cart\n\nUser-agent: GPTBot\nDisallow: /\n\nUser-agent: PerplexityBot\nDisallow: /\n\n"});
+    out.push({url:base+"/llms.txt",html:"# PumpCo\n\n> 工业泵制造商。离心泵、化工泵、渣浆泵。\n\n- 产品目录: "+base+"/products\n- 认证查询: "+base+"/certifications\n"});
+  }
+  if(kind==="storage"){
+    out.push({url:base+"/",html:shell("储能系统 · 工商业储能解决方案","<h1>工商业储能系统</h1><h2>品牌故事</h2><p>我们是一群怀抱能源理想的工程师，相信清洁电力可以改变世界。从第一天起，我们就把安全与可靠刻进每一个电芯。</p><p>我们的团队来自顶尖高校与头部企业，拥有多年行业经验。</p>",{code:'<script type="application/ld+json">{"@context":"https://schema.org","@type":"Organization","name":"ESSCo","url":"'+base+'/"}<\/script>'},base+"/")});
+    out.push({url:base+"/products/ess-100kwh",html:shell("100kWh 工商业储能柜 · 储能系统","<h1>100kWh 储能柜</h1><p>为客户提供全生命周期的能源管理服务。</p><h2>参数</h2><p>容量约 100 千瓦时，循环次数可达 6000 次以上。</p><p>通过 CE2460 认证（证书编号 CE-2025-1173），签发机构 SGS，有效期至 2027-12-31，测试依据 IEC 62619。</p><h2>认证</h2><p>认证：</p><span data-metafield=\"custom.cert\"></span>",{code:'<script type="application/ld+json">{"@context":"https://schema.org","@type":"Product","name":"100kWh 储能柜","sku":"ESS100","brand":{"@type":"Brand","name":"ESSCo"},"description":"工商业储能","image":["/a.jpg"],"offers":{"@type":"Offer","price":"42000","priceCurrency":"USD","availability":"https://schema.org/InStock","itemCondition":"https://schema.org/NewCondition","seller":{"@type":"Organization","name":"ESSCo"}}}<\/script>'},base+"/products/ess-100kwh")});
+    out.push({url:base+"/products/ess-50kwh",html:shell("50kWh 储能柜 · 储能系统","<h1>50kWh 储能柜</h1><p>循环寿命 8000 次。</p><p>适用于中小型工商业场景。</p>",{code:'<script type="application/ld+json">{"@context":"https://schema.org","@type":"Product","name":"50kWh 储能柜","sku":"ESS50","brand":{"@type":"Brand","name":"ESSCo"},"description":"工商业储能","image":["/b.jpg"],"offers":{"@type":"Offer","price":"22000","priceCurrency":"USD","availability":"https://schema.org/InStock"}}<\/script>'},base+"/products/ess-50kwh")});
+    out.push({url:base+"/robots.txt",html:"User-agent: *\nDisallow: /account\nSitemap: "+base+"/sitemap.xml\n"});
+  }
+  if(kind==="lock"){
+    out.push({url:base+"/",html:shell("智能门锁 · 指纹锁与密码锁","<h1>智能门锁</h1><h2>关于我们</h2><p>我们用科技守护每一个家。十余年专注智能安防，服务超过百万家庭。</p>",{code:'<script type="application/ld+json">{"@context":"https://schema.org","@type":"Organization","name":"LockCo","url":"'+base+'/"}<\/script>'},base+"/")});
+    out.push({url:base+"/products/smart-lock-pro",html:shell("Smart Lock Pro · 智能门锁","<h1>Smart Lock Pro</h1><p>续航 12 个月。</p><p>支持指纹、密码、卡片、App 四种开锁方式。</p><img src=\"/p.jpg\">",{code:'<script type="application/ld+json">{"@context":"https://schema.org","@type":"Product","name":"Smart Lock Pro","sku":"SLP","brand":{"@type":"Brand","name":"LockCo"},"description":"智能门锁","image":["/p.jpg"],"offers":{"@type":"Offer","price":"199","priceCurrency":"USD","availability":"https://schema.org/InStock"}}<\/script>'},base+"/products/smart-lock-pro")});
+    out.push({url:base+"/products/smart-lock-lite",html:shell("Smart Lock Lite · 智能门锁","<h1>Smart Lock Lite</h1><p>续航 10 个月。</p><p>入门款，支持指纹与密码。</p>",{code:'<script type="application/ld+json">{"@context":"https://schema.org","@type":"Product","name":"Smart Lock Lite","sku":"SLL","brand":{"@type":"Brand","name":"LockCo"},"description":"智能门锁 Lite","image":["/l.jpg"],"offers":{"@type":"Offer","price":"129","priceCurrency":"USD","availability":"https://schema.org/InStock"}}<\/script>'},base+"/products/smart-lock-lite")});
+    out.push({url:base+"/robots.txt",html:"User-agent: *\nAllow: /\nSitemap: "+base+"/sitemap.xml\n"});
+  }
+  return out;
+}
+
+/* ============ 交互 ============ */
+function switchMode(p){
+  $$("#modes .mode").forEach(m=>m.classList.toggle("on",m.dataset.p===p));
+  $$(".pane").forEach(x=>x.classList.toggle("on",x.id==="p-"+p));
+  $("#runbar").classList.toggle("hidden",p==="fetch");
+}
+$$("#modes .mode").forEach(m=>m.addEventListener("click",()=>switchMode(m.dataset.p)));
+
+$("#drop").addEventListener("click",()=>$("#file").click());
+$("#drop").addEventListener("dragover",e=>{e.preventDefault();$("#drop").classList.add("over");});
+$("#drop").addEventListener("dragleave",()=>$("#drop").classList.remove("over"));
+$("#drop").addEventListener("drop",e=>{e.preventDefault();$("#drop").classList.remove("over");readFiles(e.dataTransfer.files);});
+$("#file").addEventListener("change",e=>readFiles(e.target.files));
+
+$("#paste-add").addEventListener("click",()=>{
+  const u=$("#paste-url").value.trim(),s=$("#paste-src").value.trim();
+  if(!s){alert("请先粘贴网页源码");return;}
+  SOURCES.push({html:s,url:u||("https://page-"+(SOURCES.length+1)+".local/")});
+  log("添加页面 "+(u||"未命名")+"（"+Math.round(s.length/1024)+" KB）","ok");
+  $("#paste-src").value="";
+  $("#paste-count").textContent="已添加 "+SOURCES.length+" 页";
+  updateReady();
+});
+$("#robots-in").addEventListener("input",e=>{const v=e.target.value.trim();if(v){ROBOTS_TXT=v;log("已载入 robots.txt","ok");}});
+
+$("#go").addEventListener("click",runFetch);
+$("#run").addEventListener("click",runAudit);
+$("#reset").addEventListener("click",()=>{SOURCES.length=0;ROBOTS_TXT=null;LOG=[];$("#log").innerHTML="";$("#report").innerHTML="";$("#report").classList.add("hidden");$("#filelist").innerHTML="";$("#paste-count").textContent="";updateReady();});
+
+$$(".demo-btn").forEach(b=>b.addEventListener("click",()=>{
+  SOURCES.length=0;ROBOTS_TXT=null;LOG=[];DEMO_MODE=true;LLMS_TXT=null;
+  const kind=b.dataset.d;
+  log("载入示例站点："+kind+"（示例数据，非真实站点）","hl");
+  demoSite(kind).forEach(s=>{
+    if(/robots\.txt$/i.test(s.url)){ROBOTS_TXT=s.html;log("读取 robots.txt","ok");return;}
+    if(/llms\.txt$/i.test(s.url)){LLMS_TXT=true;log("检测到 llms.txt","ok");return;}
+    SOURCES.push({html:s.html,url:s.url});log("载入 "+s.url,"ok");
+  });
+  updateReady();
+  setTimeout(runAudit,120);
+}));
+
+const WORKER=`// Cloudflare Worker · 一键部署后填入「自建代理」地址
+export default {
+  async fetch(request) {
+    const target = new URL(request.url).searchParams.get('url');
+    if (!target) return new Response('missing ?url=', { status: 400 });
+    let u;
+    try { u = new URL(target); } catch (e) { return new Response('bad url', { status: 400 }); }
+    if (!/^https?:$/.test(u.protocol)) return new Response('bad protocol', { status: 400 });
+
+    const r = await fetch(u.href, {
+      headers: {
+        'user-agent': 'Mozilla/5.0 (compatible; GEOAudit/1.0; +AI-search-audit)',
+        'accept': 'text/html,text/plain,*/*'
+      },
+      redirect: 'follow'
+    });
+    const body = await r.text();
+    return new Response(body, {
+      status: 200,
+      headers: {
+        'content-type': (r.headers.get('content-type') || 'text/html') + '; charset=utf-8',
+        'access-control-allow-origin': '*',
+        'access-control-allow-headers': '*',
+        'access-control-max-age': '86400'
+      }
+    });
+  }
+};`;
+$("#worker-code").textContent=WORKER;
+$("#copy-worker").addEventListener("click",e=>copy(WORKER,e.target));
+$("#copy-w2").addEventListener("click",e=>copy(WORKER,e.target));
+async function detectProxy(){
+  const el=$("#proxy-state"); if(!el)return;
+  if(location.protocol==="file:"){
+    el.textContent="本地文件模式：同源抓取通道不可用，请使用「上传网页文件」或「粘贴源码」";
+    el.style.color="var(--warn)";return;
+  }
+  try{
+    const r=await fetch("/api/fetch",{cache:"no-store"});
+    if(r.ok){
+      const j=await r.json();
+      if(j&&j.ok){
+        el.textContent="● 同源抓取通道已就绪，可直接输入网址扫描全站";
+        el.style.color="var(--ok)";return;
+      }
+    }
+  }catch(e){}
+  el.textContent="";
+}
+// 支持通过链接参数预配置：?url=域名&proxy=代理地址&autorun=1
+(function applyQuery(){
+  try{
+    const qs=new URLSearchParams(location.search);
+    const p=qs.get("proxy"),u=qs.get("url"),ar=qs.get("autorun");
+    if(p){$("#proxy").value=p;log("已从链接参数载入代理地址","ok");}
+    if(u)$("#url").value=u;
+    if(ar&&u)setTimeout(runFetch,200);
+  }catch(e){}
+})();
+switchMode("fetch");
+updateReady();
+detectProxy();
+</script>
+</body>
+</html>
