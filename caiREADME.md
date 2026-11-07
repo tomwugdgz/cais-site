@@ -54,15 +54,15 @@ CAIS 检测 C、F、H 三个判断点上的全部失败原因。
 
 | 路线 | 条件 | 客户能否直接输网址 | 操作 |
 |---|---|---|---|
-| D · Node 服务 | 有一台能跑 Node 的机器或容器 | 能，开箱即用 | `node server.js` |
+| D · Node 服务 | 有一台能跑 Node 的机器或容器 | 能，开箱即用 | `node caiserver.js` |
 | A1 · Cloudflare Pages | 有 Cloudflare 账号 | 能，开箱即用 | `npm run deploy` |
-| B · 任意静态托管 + 独立代理 | 有静态空间，能部署一个 Worker | 能，需用链接预置代理 | 上传 `cais.html` + 部署 `standalone-worker.js` |
+| B · 任意静态托管 + 独立代理 | 有静态空间，能部署一个 Worker | 能，需用链接预置代理 | 上传 `cais.html` + 部署 `caiworker/caistandalone-worker.js` |
 | C · 纯静态 | 只有一个静态空间 | 不能，改用上传或粘贴 | 只上传 `cais.html` |
 
 **路线 D · Node 服务（最快验证抓取能力）**
 
 ```bash
-node server.js
+node caiserver.js
 # 打开 http://localhost:3000
 ```
 
@@ -88,7 +88,7 @@ CLOUDFLARE_API_TOKEN=你的令牌 npm run deploy
 **路线 B · 静态托管 + 独立代理**
 
 1. 上传 `cais.html` 到任意静态空间
-2. 把 `worker/standalone-worker.js` 部署到 Cloudflare Workers，得到地址 `https://cais-proxy.xxx.workers.dev`
+2. 把 `caiworker/caistandalone-worker.js` 部署到 Cloudflare Workers，得到地址 `https://cais-proxy.xxx.workers.dev`
 3. 用链接把代理地址预置进去，把这个链接发给客户：
 
 ```
@@ -113,21 +113,22 @@ npm run dev
 ## 三、文件结构
 
 ```
-ai-search-audit/
-├── cais.html                     诊断页本体。单文件，1361 行，零依赖
-├── server.js                     Node 单端口服务。静态托管 + /api/fetch 代理
-├── functions/api/fetch.js        Cloudflare Pages 同源抓取代理，路由 /api/fetch
-├── worker/standalone-worker.js   独立 Cloudflare Worker，给不支持 Functions 的托管用
-├── package.json                  命令入口：start / dev / deploy
-└── README.md                     本文件
+cai-project/
+├── cais.html                                 诊断页本体。单文件，1361 行，零依赖
+├── caiserver.js                              Node 单端口服务。静态托管 + /api/fetch 代理
+├── caifunctions/api/fetch.js                 Cloudflare Pages 同源抓取代理，路由 /api/fetch
+├── caiworker/caistandalone-worker.js         独立 Cloudflare Worker，给不支持 Functions 的托管用
+├── caipackage.json                           命令入口：start / dev / deploy
+└── caiREADME.md                              本文件
 ```
 
 | 文件 | 必需性 | 说明 |
 |---|---|---|
 | `cais.html` | 必需 | 全部诊断逻辑在此。CSS 与 JS 内联，可单独双击打开 |
-| `server.js` | 路线 A2 / D 需要 | Node 18+ 原生 http，无第三方依赖。同时提供静态页与抓取代理 |
-| `functions/api/fetch.js` | 路线 A1 需要 | Cloudflare Pages 版代理，与静态页同域 |
-| `worker/standalone-worker.js` | 路线 B 需要 | 独立 Worker 版代理，入口格式不同 |
+| `caiserver.js` | 路线 A2 / D 需要 | Node 18+ 原生 http，无第三方依赖。同时提供静态页与抓取代理 |
+| `caifunctions/api/fetch.js` | 路线 A1 需要 | Cloudflare Pages 版代理，与静态页同域 |
+| `caiworker/caistandalone-worker.js` | 路线 B 需要 | 独立 Worker 版代理，入口格式不同 |
+| `caipackage.json` | 部署用 | 不含运行时依赖，`npm install` 只拉 wrangler |
 | `package.json` | 部署用 | 不含运行时依赖，`npm install` 只拉 wrangler |
 
 ---
@@ -455,7 +456,7 @@ https://你的域名/cais.html?url=example.com&proxy=https://cais-proxy.xxx.work
 
 之后每次 `git push` 自动重新发布。
 
-**注意**：`functions/` 目录必须留在仓库根目录，Pages 才会把它识别为 `/api/fetch` 路由。
+**注意**：`caifunctions/` 目录必须留在仓库根目录，Pages 才会把它识别为 `/api/fetch` 路由。部署时需在仓库根目录创建软链接：`mklink /D functions caifunctions`（Windows）或 `ln -s caifunctions functions`（Linux/Mac）。
 
 ### 9.2 Cloudflare Pages · 命令行
 
@@ -649,8 +650,9 @@ flowchart TB
 |---|---|
 | v1.0 | 五步诊断引擎、39 项检测、七层 Schema、Codex 提示词、Markdown 导出 |
 | v1.1 | 新增 `nosnippet`、`noindex`、`llms.txt` 检测。公共代理增至 7 个。抓取通道状态改为静默探测 |
-| v1.2 | 新增 `server.js`：Node 单端口服务，静态托管与抓取代理同源。DNS 二次校验与逐跳重定向校验 |
+| v1.2 | 新增 `caiserver.js`：Node 单端口服务，静态托管与抓取代理同源。DNS 二次校验与逐跳重定向校验 |
 | v1.3 | 新增 MTO 机器信任诊断：四层评分、16 个约定端点探测、Agent Card 字段校验。只输出诊断与建议 |
+| v1.4 | 参照 GEOInflow v1.2 目录扩充 AI 爬虫 UA 至 60+ 身份（含用途分类：训练/搜索/用户触发）。增强 robots.txt 检测按用途分类展示。增强 llms.txt 质量评估（不仅探测存在性，还评估结构、链接密度、描述完整性）。文件名加 `cai` 前缀避免托管冲突 |
 
 ## 许可
 

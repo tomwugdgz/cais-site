@@ -3,10 +3,10 @@
   "version": "1.0.0",
   "private": true,
   "description": "AI 搜索适配诊断 · 五步扫描 + Codex 提示词 + Schema 修复代码",
-  "main": "server.js",
+  "main": "caiserver.js",
   "scripts": {
-    "start": "node server.js",
-    "serve": "node server.js",
+    "start": "node caiserver.js",
+    "serve": "node caiserver.js",
     "dev": "npx wrangler@latest pages dev .",
     "deploy": "npx wrangler@latest pages deploy .",
     "deploy:prod": "npx wrangler@latest pages deploy . --branch=main"

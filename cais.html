@@ -259,19 +259,101 @@ const esc=t=>String(t==null?"":t).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",
 const now=()=>new Date().toTimeString().slice(0,8);
 
 /* ============ 常量 ============ */
+/* AI 爬虫 UA 目录（参照 GEOInflow v1.2 目录 · 60+ 身份）
+   vendor: 厂商 | purpose: AI训练/ai_train | AI搜索/ai_search | 用户触发/ai_user | 传统搜索/trad_search | 其他/other
+   ref: 官方 IP 范围 URL（未接入留空）
+*/
 const AI_BOTS=[
- {id:"GPTBot",eng:"ChatGPT"},
- {id:"OAI-SearchBot",eng:"ChatGPT Search"},
- {id:"ChatGPT-User",eng:"ChatGPT 浏览"},
- {id:"PerplexityBot",eng:"Perplexity"},
- {id:"ClaudeBot",eng:"Claude"},
- {id:"Claude-User",eng:"Claude 浏览"},
- {id:"Google-Extended",eng:"Google AI Overviews / Gemini"},
- {id:"Applebot-Extended",eng:"Apple Intelligence"},
- {id:"CCBot",eng:"Common Crawl 语料"},
- {id:"Bytespider",eng:"豆包"},
- {id:"Amazonbot",eng:"Alexa / Rufus"},
- {id:"Bingbot",eng:"Copilot"}
+ // OpenAI
+ {id:"GPTBot",eng:"ChatGPT",vendor:"OpenAI",purpose:"ai_train",ref:"https://openai.com/gptbot.json"},
+ {id:"OAI-SearchBot",eng:"ChatGPT Search",vendor:"OpenAI",purpose:"ai_search",ref:"https://openai.com/searchbot.json"},
+ {id:"ChatGPT-User",eng:"ChatGPT 浏览",vendor:"OpenAI",purpose:"ai_user",ref:"https://openai.com/chatgpt-user.json"},
+ {id:"OAI-AdsBot",eng:"OpenAI 广告",vendor:"OpenAI",purpose:"other",ref:"https://openai.com/adsbot.json"},
+ {id:"ChatGPT Agent",eng:"ChatGPT Agent",vendor:"OpenAI",purpose:"ai_search",ref:""},
+ // Anthropic
+ {id:"ClaudeBot",eng:"Claude",vendor:"Anthropic",purpose:"ai_train",ref:"https://claude.com/crawling/bots.json"},
+ {id:"Claude-SearchBot",eng:"Claude Search",vendor:"Anthropic",purpose:"ai_search",ref:"https://claude.com/crawling/bots.json"},
+ {id:"Claude-User",eng:"Claude 浏览",vendor:"Anthropic",purpose:"ai_user",ref:"https://claude.com/crawling/bots.json"},
+ // Perplexity
+ {id:"PerplexityBot",eng:"Perplexity",vendor:"Perplexity",purpose:"ai_search",ref:"https://www.perplexity.ai/perplexitybot.json"},
+ {id:"Perplexity-User",eng:"Perplexity 浏览",vendor:"Perplexity",purpose:"ai_user",ref:"https://www.perplexity.ai/perplexity-user.json"},
+ // Google
+ {id:"Google-Extended",eng:"Google AI Overviews / Gemini",vendor:"Google",purpose:"ai_train",ref:"https://developers.google.com/static/crawling/ipranges/common-crawlers.json"},
+ {id:"GoogleOther",eng:"Google AI 工具",vendor:"Google",purpose:"other",ref:"https://developers.google.com/static/crawling/ipranges/common-crawlers.json"},
+ // Apple
+ {id:"Applebot",eng:"Apple Intelligence",vendor:"Apple",purpose:"ai_train",ref:"https://search.developer.apple.com/applebot.json"},
+ {id:"Applebot-Extended",eng:"Apple Intelligence 训练扩展",vendor:"Apple",purpose:"ai_train",ref:"https://search.developer.apple.com/applebot.json"},
+ // Microsoft / Bing
+ {id:"Bingbot",eng:"Bing / Copilot",vendor:"Microsoft",purpose:"trad_search",ref:"https://www.bing.com/toolbox/bingbot.json"},
+ {id:"Copilot-Web",eng:"Copilot 网页",vendor:"Microsoft",purpose:"ai_search",ref:""},
+ // Amazon
+ {id:"Amazonbot",eng:"Amazon Alexa / Rufus",vendor:"Amazon",purpose:"ai_train",ref:"https://developer.amazon.com/amazonbot/ip-addresses/"},
+ {id:"Amzn-SearchBot",eng:"Amazon 搜索",vendor:"Amazon",purpose:"ai_search",ref:"https://developer.amazon.com/amazonbot/searchbot-ip-addresses/"},
+ {id:"Amzn-User",eng:"Amazon 浏览",vendor:"Amazon",purpose:"ai_user",ref:"https://developer.amazon.com/amazonbot/live-ip-addresses/"},
+ // 字节跳动
+ {id:"Bytespider",eng:"字节跳动 / 抖音 / 头条",vendor:"字节跳动",purpose:"ai_train",ref:""},
+ {id:"ByteDance-SearchBot",eng:"字节搜索",vendor:"字节跳动",purpose:"ai_search",ref:""},
+ {id:"ToutiaoSpider",eng:"今日头条",vendor:"字节跳动",purpose:"trad_search",ref:""},
+ // 月之暗面 Kimi
+ {id:"KimiBot",eng:"Kimi",vendor:"月之暗面",purpose:"ai_train",ref:"https://www.kimi.ai/policies/kimibot.json"},
+ {id:"Kimi-SearchBot",eng:"Kimi Search",vendor:"月之暗面",purpose:"ai_search",ref:"https://www.kimi.ai/policies/kimi-searchbot.json"},
+ {id:"Kimi-User",eng:"Kimi 浏览",vendor:"月之暗面",purpose:"ai_user",ref:"https://www.kimi.ai/policies/kimi-user.json"},
+ // 腾讯
+ {id:"HySpider",eng:"腾讯混元",vendor:"腾讯",purpose:"ai_train",ref:"https://hy.tencent.com/policy/hyspider.json"},
+ {id:"Tencent-SearchBot",eng:"腾讯搜索",vendor:"腾讯",purpose:"ai_search",ref:""},
+ {id:"TencentWechat",eng:"微信/搜一搜",vendor:"腾讯",purpose:"trad_search",ref:""},
+ // 百度
+ {id:"Baiduspider",eng:"百度",vendor:"百度",purpose:"trad_search",ref:""},
+ {id:"Baiduspider-render",eng:"百度渲染",vendor:"百度",purpose:"trad_search",ref:""},
+ {id:"Baidu-SearchBot",eng:"百度 AI 搜索",vendor:"百度",purpose:"ai_search",ref:""},
+ // 搜狗
+ {id:"Sogou web spider",eng:"搜狗",vendor:"搜狗",purpose:"trad_search",ref:""},
+ {id:"Sogou inst spider",eng:"搜狗即时",vendor:"搜狗",purpose:"trad_search",ref:""},
+ // 360
+ {id:"360Spider",eng:"360 搜索",vendor:"360",purpose:"trad_search",ref:""},
+ {id:"360Spider-Image",eng:"360 图片",vendor:"360",purpose:"trad_search",ref:""},
+ // Mistral AI
+ {id:"MistralAI-User",eng:"Mistral 浏览",vendor:"Mistral AI",purpose:"ai_user",ref:"https://mistral.ai/mistralai-user-ips.json"},
+ {id:"MistralAI-Index",eng:"Mistral 索引",vendor:"Mistral AI",purpose:"ai_search",ref:"https://mistral.ai/mistralai-index-ips.json"},
+ {id:"MistralAI-Training",eng:"Mistral 训练",vendor:"Mistral AI",purpose:"ai_train",ref:""},
+ // Meta
+ {id:"Meta-ExternalAgent",eng:"Meta AI 训练",vendor:"Meta",purpose:"ai_train",ref:""},
+ {id:"Meta-ExternalFetcher",eng:"Meta AI 获取",vendor:"Meta",purpose:"ai_user",ref:""},
+ {id:"FacebookBot",eng:"Facebook Bot",vendor:"Meta",purpose:"ai_train",ref:""},
+ // DuckDuckGo
+ {id:"DuckAssistBot",eng:"DuckDuckGo AI",vendor:"DuckDuckGo",purpose:"ai_search",ref:"https://duckduckgo.com/duckassistbot.json"},
+ // Common Crawl
+ {id:"CCBot",eng:"Common Crawl",vendor:"Common Crawl",purpose:"other",ref:"https://index.commoncrawl.org/ccbot.json"},
+ // Ahrefs / Semrush
+ {id:"AhrefsBot",eng:"Ahrefs",vendor:"Ahrefs",purpose:"other",ref:"https://api.ahrefs.com/v3/public/crawler-ip-ranges"},
+ {id:"SemrushBot",eng:"Semrush",vendor:"Semrush",purpose:"other",ref:""},
+ // Exa
+ {id:"ExaSearchBot",eng:"Exa Search",vendor:"Exa",purpose:"ai_search",ref:""},
+ {id:"ExaUser",eng:"Exa 浏览",vendor:"Exa",purpose:"ai_user",ref:""},
+ // Kagi
+ {id:"Kagibot",eng:"Kagi",vendor:"Kagi",purpose:"trad_search",ref:"https://kagi.com/bot"},
+ // 阿里 / 千问
+ {id:"QianwenSpider",eng:"通义千问",vendor:"阿里",purpose:"ai_search",ref:""},
+ {id:"AliSpider",eng:"阿里蜘蛛",vendor:"阿里",purpose:"trad_search",ref:""},
+ // 360 AI / 纳米
+ {id:"360-SearchAI",eng:"360 AI 搜索",vendor:"360",purpose:"ai_search",ref:""},
+ // 其他 AI
+ {id:"AI2Bot",eng:"Ai2 训练",vendor:"Ai2",purpose:"ai_train",ref:""},
+ {id:"CohereBot",eng:"Cohere",vendor:"Cohere",purpose:"ai_search",ref:""},
+ {id:"YouBot",eng:"You.com",vendor:"You.com",purpose:"ai_search",ref:""},
+ // DeepSeek
+ {id:"DeepSeekBot",eng:"DeepSeek",vendor:"DeepSeek",purpose:"ai_search",ref:""},
+ // 传统蜘蛛（保留但不做 AI 判定）
+ {id:"Googlebot",eng:"Google 蜘蛛",vendor:"Google",purpose:"trad_search",ref:"https://developers.google.com/static/crawling/ipranges/common-crawlers.json"},
+ {id:"Googlebot-Image",eng:"Google 图片",vendor:"Google",purpose:"trad_search",ref:"https://developers.google.com/static/crawling/ipranges/common-crawlers.json"},
+ {id:"Googlebot-Video",eng:"Google 视频",vendor:"Google",purpose:"trad_search",ref:"https://developers.google.com/static/crawling/ipranges/common-crawlers.json"},
+ {id:"DuckDuckBot",eng:"DuckDuckGo",vendor:"DuckDuckGo",purpose:"trad_search",ref:"https://duckduckgo.com/duckduckbot.json"},
+ {id:"YandexBot",eng:"Yandex",vendor:"Yandex",purpose:"trad_search",ref:""},
+ {id:"Yeti",eng:"Naver",vendor:"Naver",purpose:"trad_search",ref:""},
+ {id:"SeznamBot",eng:"Seznam",vendor:"Seznam",purpose:"trad_search",ref:""},
+ {id:"Qwantbot",eng:"Qwant",vendor:"Qwant",purpose:"trad_search",ref:""},
+ {id:"MojeekBot",eng:"Mojeek",vendor:"Mojeek",purpose:"trad_search",ref:""},
+ {id:"MJ12bot",eng:"Majestic",vendor:"Majestic",purpose:"other",ref:""}
 ];
 const GTIN_KEYS=["gtin13","gtin14","gtin12","gtin8","gtin"];
 const PRODUCT_REQ=["name","image","description","sku","brand","offers"];
@@ -332,6 +414,36 @@ async function fetchText(url,proxy){
   }
   return {ok:false,err:last||"无可用通道"};
 }
+/* ============ llms.txt 质量评估 ============ */
+// 参照 GEOInflow 内容目录覆盖理念：不仅检查存在性，还评估内容能否支撑 AI 抽取
+function evalLlmsTxtQuality(txt){
+  if(!txt||!txt.trim())return {score:0,issues:["内容为空"]};
+  const lines=txt.trim().split(/\n+/).filter(l=>l.trim());
+  if(lines.length<=1)return {score:0.1,issues:["仅一行内容，缺乏结构"]};
+  // 检查结构要素：标题、描述、链接清单
+  const hasTitle=/^#\s+/m.test(txt);
+  const hasDesc=/> |^.+：/.test(txt)||/description|描述|about|关于/i.test(txt);
+  const links=(txt.match(/https?:\/\//g)||[]).length;
+  const listItems=(txt.match(/^[-*•]\s+/gm)||[]).length;
+  const hasSections=/^##\s+/m.test(txt);
+  let score=0;
+  if(hasTitle)score+=0.15;
+  if(hasDesc)score+=0.15;
+  if(links>=3)score+=0.25;
+  else if(links>0)score+=0.1;
+  if(listItems>=3)score+=0.2;
+  else if(listItems>0)score+=0.1;
+  if(hasSections)score+=0.15;
+  if(txt.length>200)score+=0.1;
+  const issues=[];
+  if(!hasTitle)issues.push("缺少标题或站点标识");
+  if(!hasDesc)issues.push("缺少站点描述或简介");
+  if(links===0)issues.push("无任何链接");
+  else if(links<3)issues.push("链接过少（"+links+" 条），不足以覆盖核心内容");
+  if(listItems===0)issues.push("无列表结构，不利于 AI 逐条抽取");
+  return {score:Math.min(1,score),issues};
+}
+
 /* ============ MTO · 机器信任优化 ============ */
 // 参考 MTO 四层技术构成：L1 证据链 / L2 机器可读 / L3 信任量化 / L4 协议与执行
 // 约定端点探测表。status 200 视为存在，401/403 视为存在但需授权。
@@ -576,10 +688,10 @@ function parseRobots(txt){
     if(!g)g=groups.find(x=>x.agents.indexOf("*")>=0);
     let blocked=false,allowAll=null;
     if(g)g.rules.forEach(r=>{
-      if(r.t==="disallow"&&r.v==="/")blocked=true;
-      if(r.t==="allow"&&r.v==="/"&&r.t==="allow")allowAll=true;
+      if(r.t==="disallow"&&(r.v==="/"||r.v===""))blocked=true;
+      if(r.t==="allow"&&r.v==="/")allowAll=true;
     });
-    res[b.id]={blocked:blocked,engine:b.eng,declared:!!groups.find(x=>x.agents.indexOf(id)>=0),allowAll:!!allowAll};
+    res[b.id]={blocked:blocked,engine:b.eng,vendor:b.vendor||"",purpose:b.purpose||"other",ref:b.ref||"",declared:!!groups.find(x=>x.agents.indexOf(id)>=0),allowAll:!!allowAll};
   });
   const sitemaps=(txt.match(/^\s*sitemap\s*:\s*(\S+)/gim)||[]).map(s=>s.split(/:\s*/)[1]);
   return {bots:res,sitemaps:sitemaps};
@@ -830,7 +942,7 @@ function audit(pages,robots,llmsTxt,probes){
      cnt("prod-offer")*2+cnt("prod-empty-val")*2+cnt("faq-noschema")*3+cnt("faq-broken")*4+
      cnt("metafield-unrendered")*4+cnt("liquid-left")*1+cnt("meta-desc")*1+cnt("no-canonical")*1+
      cnt("nosnippet")*6+cnt("noindex")*5+
-     (robots?Object.keys(robots.bots).filter(b=>robots.bots[b].blocked).length*3:0))/Math.max(1,Math.sqrt(n)));
+     (robots?Object.keys(robots.bots).filter(b=>robots.bots[b].blocked&&(robots.bots[b].purpose==="ai_train"||robots.bots[b].purpose==="ai_search"||robots.bots[b].purpose==="ai_user")).length*3:0))/Math.max(1,Math.sqrt(n)));
   const layerScore=SEVEN_LAYER.reduce((a,L)=>{
     const id="layer-"+L.t.toLowerCase().split("/")[0];
     const hit=pages.some(p=>p.nodes.some(nd=>getType(nd).some(t=>String(t).indexOf(L.t.split("/")[0])>=0)));
@@ -1087,7 +1199,13 @@ function mtoAudit(pages,probes,llmsTxt){
 
   // L2 机器可读 25
   let l2=0;
-  if(llmsTxt)l2+=6;
+  // llms.txt 质量评估：不仅检查存在性，还评估内容质量（参照 GEOInflow 内容目录覆盖理念）
+  const llmsQuality=llmsTxt?evalLlmsTxtQuality(llmsTxt):{score:0,issues:[]};
+  if(llmsTxt){
+    if(llmsQuality.score>=0.7)l2+=6;          // 高质量：有结构 + 有链接 + 有描述
+    else if(llmsQuality.score>=0.4)l2+=4;     // 中等质量：有基本结构
+    else l2+=2;                                // 低质量：只有标题
+  }
   if(has("llms-full"))l2+=4;
   if(has("ai-txt")||has("ai-txt2"))l2+=2;
   const altRatio=1-(noAltPages/n);
@@ -1097,7 +1215,12 @@ function mtoAudit(pages,probes,llmsTxt){
   if(!llmsTxt)add("medium",2,"缺少 llms.txt",
     u(["根目录 /llms.txt 未返回有效内容"]),
     "没有面向机器的结构化入口，Agent 只能用通用爬虫解析整页，读取成本高、歧义大。",
-    "在根目录提供 llms.txt，列出站点结构、核心页面与关键事实的直达链接。");
+    "在根目录提供 llms.txt：一段站点简介 + 核心页面与关键事实的直达链接。参照 AI 爬虫分析最佳实践，内容应包含站点结构说明、重点页面清单和关键事实。");
+  else if(llmsQuality&&llmsQuality.score<0.4&&llmsQuality.issues.length)
+    add("low",2,"llms.txt 内容质量不足",
+    u(["llms.txt 质量评分偏低："+llmsQuality.issues.join("；")]),
+    "llms.txt 虽然存在，但内容不足以支撑 AI 有效抽取。机器仍需用通用爬虫解析。",
+    "丰富 llms.txt 内容：加站点描述、分区块列核心页面链接（至少 3 条）、补每个链接的一句话说明。");
   if(!has("llms-full"))add("low",2,"缺少 llms-full.txt",
     u(["/llms-full.txt 未返回有效内容"]),
     "llms.txt 只给索引。完整知识文件才能让 Agent 一次性读到全部可核验事实。",
@@ -1373,11 +1496,36 @@ function render(res,domainLabel){
     h+='<div class="step"><div class="step-h"><span class="idx">0'+k+'</span><span class="ttl">'+STEP_TITLE[k-1]+'</span>'+
        '<span class="sc" style="color:'+c+'">'+st.score+"/"+st.max+'</span><span class="cv">&#9656;</span></div><div class="step-b">';
     if(k===1&&res.robots){
-      const blocked=Object.keys(res.robots.bots).filter(b=>res.robots.bots[b].blocked);
-      h+='<div class="sub"><h4>AI 爬虫可达性</h4><div>';
-      if(!blocked.length)h+='<span class="pill hit">全部主流 AI 爬虫未被屏蔽</span>';
-      else blocked.forEach(b=>h+='<span class="pill miss">'+esc(b)+' 被屏蔽 · '+esc(res.robots.bots[b].engine)+'</span>');
-      h+="</div></div>";
+      const allBots=res.robots.bots;
+      // 按用途分类：AI训练、AI搜索、用户触发、传统搜索、其他
+      const purposeLabels={ai_train:"AI 训练",ai_search:"AI 搜索",ai_user:"用户触发",trad_search:"传统搜索",other:"其他"};
+      const byPurpose={ai_train:[],ai_search:[],ai_user:[],trad_search:[],other:[]};
+      Object.keys(allBots).forEach(b=>{
+        const info=allBots[b];
+        const p=info.purpose||"other";
+        if(info.declared||info.blocked){(byPurpose[p]=byPurpose[p]||[]).push({id:b,info:info});}
+      });
+      const blockedAll=Object.keys(allBots).filter(b=>allBots[b].blocked);
+      h+='<div class="sub"><h4>AI 爬虫可达性（按用途分类）</h4>';
+      if(!blockedAll.length)h+='<div><span class="pill hit">全部 AI 爬虫未被屏蔽</span></div>';
+      else{
+        const order=["ai_train","ai_search","ai_user"];
+        order.forEach(p=>{
+          const group=byPurpose[p]&&byPurpose[p].filter(x=>x.info.blocked);
+          if(!group||!group.length)return;
+          h+='<div class="muted" style="margin:6px 0 4px;font-size:12px">'+purposeLabels[p]+'</div><div>';
+          group.forEach(x=>{h+='<span class="pill miss">'+esc(x.id)+' 被屏蔽 · '+esc(x.info.engine)+(x.info.vendor?' · '+esc(x.info.vendor):'')+'</span>';});
+          h+="</div>";
+        });
+        // 声明但未单独列出的
+        const declaredOk=Object.keys(allBots).filter(b=>allBots[b].declared&&!allBots[b].blocked);
+        if(declaredOk.length){
+          h+='<div class="muted" style="margin:6px 0 4px;font-size:12px">已声明且未被屏蔽</div><div>';
+          declaredOk.forEach(b=>{const info=allBots[b];h+='<span class="pill hit">'+esc(b)+' ✓ · '+esc(info.engine)+(info.vendor?' · '+esc(info.vendor):'')+'</span>';});
+          h+="</div>";
+        }
+      }
+      h+="</div>";
     }
     if(k===2){
       const hits=SEVEN_LAYER.map(L=>{
@@ -1612,8 +1760,8 @@ async function runAudit(){
   const pages=SOURCES.map((s,i)=>{const p=parsePage(s.html,s.url);p.isHome=(i===0);return p;});
   const robots=ROBOTS_TXT?parseRobots(ROBOTS_TXT):null;
   if(robots){
-    const blocked=Object.keys(robots.bots).filter(b=>robots.bots[b].blocked);
-    log(blocked.length?("robots.txt 屏蔽了 "+blocked.length+" 个 AI 爬虫："+blocked.join(", ")):"robots.txt 未屏蔽主流 AI 爬虫",blocked.length?"err":"ok");
+    const aiBlocked=Object.keys(robots.bots).filter(b=>robots.bots[b].blocked&&(robots.bots[b].purpose==="ai_train"||robots.bots[b].purpose==="ai_search"||robots.bots[b].purpose==="ai_user"));
+    log(aiBlocked.length?("robots.txt 屏蔽了 "+aiBlocked.length+" 个 AI 爬虫："+aiBlocked.join(", ")):"robots.txt 未屏蔽 AI 爬虫",aiBlocked.length?"err":"ok");
   }
   const bad=pages.reduce((a,p)=>a+p.ld.filter(b=>!b.ok).length,0);
   log("JSON-LD 语法错误 "+bad+" 处",bad?"err":"ok");
